@@ -1,0 +1,80 @@
+# Complexity tiers for the LLM Cost AutoPilot classifier (Phase 2.1).
+#
+# Each incoming prompt is scored into exactly one tier. The tier later maps to a
+# model (Phase 2.4 routing map) — cheaper models for lower tiers. These
+# definitions are the ground truth the labeled dataset (2.2) and the classifier
+# (2.3) are built against, so keep the boundaries concrete and mutually
+# exclusive. Edit here to reshape routing behavior without touching code.
+
+version: 1
+
+tiers:
+  - id: 1
+    name: simple
+    summary: >
+      Mechanical tasks with a single correct output that can be derived directly
+      from the prompt. No reasoning chain, no judgment, no world knowledge
+      beyond the obvious.
+    task_types:
+      - Reformatting (date formats, case changes, list-to-CSV)
+      - Extraction (pull an email, name, number, or field from provided text)
+      - Basic Q&A answerable from context given in the prompt
+      - Simple lookups with a single unambiguous answer
+    example_prompts:
+      - "Convert 'March 3, 2026' to YYYY-MM-DD."
+      - "Extract the email address from: contact jane.doe@acme.io for details."
+      - "Turn this list into a comma-separated string: apples, bananas, cherries."
+    default_target: llama-local  # provisional; final mapping lives in 2.4
+
+  - id: 2
+    name: moderate
+    summary: >
+      Tasks that require condensing, categorizing, or lightly analyzing content.
+      One clear objective, but the model must process and transform meaning
+      rather than just move text around.
+    task_types:
+      - Summarization (condense a paragraph or document)
+      - Classification (sentiment, topic, intent labeling)
+      - Structured analysis (pros/cons, simple comparisons)
+      - Explanations of a single concept
+    example_prompts:
+      - "Summarize this product review in one sentence."
+      - "Classify the sentiment of this feedback as positive, negative, or mixed."
+      - "Explain why mitochondria are called the powerhouse of the cell."
+    default_target: gemini-flash  # provisional; final mapping lives in 2.4
+
+  - id: 3
+    name: complex
+    summary: >
+      Tasks needing multi-step reasoning, creative generation, or nuanced
+      judgment where there is no single mechanical answer and quality varies
+      meaningfully by model.
+    task_types:
+      - Multi-step reasoning (math word problems, logic puzzles)
+      - Creative generation (drafting emails, stories, marketing copy)
+      - Nuanced judgment (trade-off analysis, recommendations)
+      - Open-ended comparisons requiring domain knowledge
+    example_prompts:
+      - "A farmer has 17 sheep, all but 9 run away. How many are left? Show your reasoning."
+      - "Compare SQLite vs PostgreSQL for a small web app and recommend one."
+      - "Draft a polite email declining a meeting invitation."
+    default_target: claude-sonnet  # provisional; final mapping lives in 2.4
+
+# Feature signals the classifier (2.3) will extract from each prompt to decide a
+# tier. Documented here so 2.2 feature engineering stays aligned with intent.
+# These are hints, not hard rules — the trained model weighs them.
+signals:
+  token_count:
+    note: Longer prompts skew higher-tier, but not always (a long doc to reformat is still Tier 1).
+  instruction_verbs:
+    tier_1: [convert, extract, format, list, reformat, rewrite]
+    tier_2: [summarize, classify, explain, categorize, label]
+    tier_3: [analyze, compare, reason, design, recommend, evaluate, create, write]
+  constraint_count:
+    note: More explicit constraints (tone, length, format, audience) push toward higher tiers.
+  context_provided:
+    note: If all needed info is in the prompt, tier trends lower; if it requires outside knowledge, higher.
+  output_format_complexity:
+    note: Single value or short string trends Tier 1; structured or long-form output trends Tier 2-3.
+  reasoning_required:
+    note: Any "show your work", multi-hop, or judgment requirement forces Tier 3.

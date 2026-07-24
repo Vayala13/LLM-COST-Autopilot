@@ -1,0 +1,339 @@
+{
+  "generated_at": "2026-07-24T05:27:50.485792+00:00",
+  "skipped": {
+    "gpt-4o": "OPENAI_API_KEY is not set in .env",
+    "gpt-4o-mini": "OPENAI_API_KEY is not set in .env"
+  },
+  "results": [
+    {
+      "model": "claude-sonnet",
+      "provider": "anthropic",
+      "prompt_index": 1,
+      "prompt": "Reformat this date to YYYY-MM-DD: March 3, 2026.",
+      "output": "**2026-03-03**",
+      "input_tokens": 32,
+      "output_tokens": 10,
+      "latency_s": 2.51,
+      "cost_usd": 0.000246
+    },
+    {
+      "model": "claude-sonnet",
+      "provider": "anthropic",
+      "prompt_index": 2,
+      "prompt": "Extract the email address from: 'Reach me at jane.doe@acme.io anytime.'",
+      "output": "The email address is: **jane.doe@acme.io**",
+      "input_tokens": 36,
+      "output_tokens": 19,
+      "latency_s": 1.42,
+      "cost_usd": 0.000393
+    },
+    {
+      "model": "claude-sonnet",
+      "provider": "anthropic",
+      "prompt_index": 3,
+      "prompt": "What is the capital of Australia?",
+      "output": "# Capital of Australia\n\nThe capital of Australia is **Canberra**.\n\nA common misconception is that Sydney or Melbourne is the capital, since they are Australia's largest and most well-known cities. However, Canberra was purpose-built to serve as the capital as a compromise between Sydney and Melbourne, which were rivals for the honor. Canberra is located in the Australian Capital Territory (ACT), and it became the official capital in 1913.",
+      "input_tokens": 16,
+      "output_tokens": 146,
+      "latency_s": 2.128,
+      "cost_usd": 0.002238
+    },
+    {
+      "model": "claude-sonnet",
+      "provider": "anthropic",
+      "prompt_index": 4,
+      "prompt": "Convert this list to a comma-separated string: apples, bananas, cherries.",
+      "output": "Here's the comma-separated string:\n\n**apples, bananas, cherries**\n\nIf you meant to format it differently (e.g., from a Python list like `['apples', 'bananas', 'cherries']`), the result is the same:\n\n```\napples, bananas, cherries\n```\n\nLet me know if you'd like it in a different format (e.g., with quotes, semicolons, or as a single string variable)!",
+      "input_tokens": 31,
+      "output_tokens": 126,
+      "latency_s": 2.495,
+      "cost_usd": 0.001983
+    },
+    {
+      "model": "claude-sonnet",
+      "provider": "anthropic",
+      "prompt_index": 5,
+      "prompt": "Summarize in one sentence: The mitochondria is the powerhouse of the cell, producing ATP through respiration.",
+      "output": "The mitochondria acts as the cell's powerhouse by generating ATP through the process of respiration.",
+      "input_tokens": 44,
+      "output_tokens": 34,
+      "latency_s": 1.51,
+      "cost_usd": 0.000642
+    },
+    {
+      "model": "claude-sonnet",
+      "provider": "anthropic",
+      "prompt_index": 6,
+      "prompt": "Classify the sentiment (positive/negative/neutral): 'The delivery was late but the product is great.'",
+      "output": "# Sentiment Classification\n\n**Overall Sentiment: Mixed/Neutral (leaning slightly positive)**\n\n## Breakdown:\n\n| Aspect | Sentiment |\n|--------|-----------|\n| Delivery | Negative (\"was late\") |\n| Product | Positive (\"is great\") |\n\n## Explanation:\nThis sentence contains **mixed sentiment** because it addresses two different aspects with contrasting evaluations:\n\n- **Negative component**: \"delivery was late\" \u2014 expresses dissatisfaction\n- **Positive component**: \"product is great\" \u2014 expresses satisfaction\n- **Contrast marker**: \"but\" signals the shift in sentiment between clauses\n\n## Classification Options:\n\n1. **If forced into a single label**: I'd classify this as **Positive**, since \"but\" typically shifts emphasis toward the clause that follows it \u2014 meaning the speaker's final takeaway favors the product quality over the delivery issue.\n\n2. **If mixed/neutral is allowed**: **Neutral/Mixed** is more accurate, since the sentence contains both positive and negative elements without one completely negating the other.\n\nWould you like me to analyze this using a specific sentiment analysis framework (e.g., aspect-based sentiment analysis) or classify similar examples?",
+      "input_tokens": 40,
+      "output_tokens": 416,
+      "latency_s": 4.894,
+      "cost_usd": 0.00636
+    },
+    {
+      "model": "claude-sonnet",
+      "provider": "anthropic",
+      "prompt_index": 7,
+      "prompt": "Compare the trade-offs between SQLite and PostgreSQL for a small web app.",
+      "output": "# SQLite vs PostgreSQL for a Small Web App\n\n## SQLite Advantages\n\n- **Zero configuration** \u2014 no server process, no separate installation or user management\n- **Simple deployment** \u2014 the database is just a file; easy to backup (copy the file), easy to move\n- **Low resource overhead** \u2014 great for apps with light traffic or limited server resources\n- **Fast for read-heavy workloads** \u2014 no network round-trip since it's embedded in-process\n- **Great for development/prototyping** \u2014 works well locally without spinning up services (e.g., Docker)\n\n## SQLite Drawbacks\n\n- **Limited concurrent writes** \u2014 SQLite locks the entire database file during writes, so high write concurrency causes contention\n- **Not ideal for multi-server deployments** \u2014 if you scale horizontally (multiple app servers), they can't easily share one SQLite file\n- **Fewer advanced features** \u2014 weaker support for things like full-text search, JSON querying, complex constraints, and window functions (though modern SQLite has improved here)\n- **No built-in replication** \u2014 harder to set up read replicas or high-availability failover\n\n## PostgreSQL Advantages\n\n- **Robust concurrency** \u2014 MVCC allows many simultaneous readers and writers without blocking each other\n- **Rich feature set** \u2014 advanced indexing (GIN, GiST), full-text search, JSONB, CTEs, triggers, extensions (PostGIS, etc.)\n- **Scales with your app** \u2014 supports replication, connection pooling, partitioning as traffic grows\n- **Strong ecosystem** \u2014 mature tooling for migrations, monitoring, backups (pg_dump, WAL archiving)\n- **Enforces data integrity** well with strict typing and constraints\n\n## PostgreSQL Drawbacks\n\n- **Operational overhead** \u2014 requires running and maintaining a separate server process, managing connections, backups, upgrades\n- **More setup complexity** \u2014 need to configure authentication, networking, possibly connection pooling (PgBouncer) under load\n- **Overkill for tiny apps** \u2014 added complexity may not pay off if your app has minimal traffic or data\n\n## Practical Recommendation\n\n| Scenario | Suggested Choice |\n|---|---|\n| Solo project, prototype, internal tool, <10 concurrent users | **SQLite** |\n| Expecting growth, multiple app servers, or need advanced queries | **PostgreSQL** |\n| Uncertain future scale, want to avoid migration later | **PostgreSQL** (or start with SQLite but design with an ORM to ease switching) |\n| Serverless/edge deployment with read-heavy access | **SQLite** (especially with tools like Litestream for backups, or **libSQL/Turso** for distributed SQLite) |\n\n### A Middle Ground\nMany modern setups use **SQLite with Litestream** (continuous replication to S3) to get simplicity while mitigating the backup/durability concerns \u2014 a popular choice for small-to-medium apps that want to avoid managing a database server at all.\n\nIf you tell me more about your app (expected traffic, deployment target \u2014 e.g., Fly.io, a VPS",
+      "input_tokens": 34,
+      "output_tokens": 1024,
+      "latency_s": 12.529,
+      "cost_usd": 0.015462
+    },
+    {
+      "model": "claude-sonnet",
+      "provider": "anthropic",
+      "prompt_index": 8,
+      "prompt": "Explain why the sky appears blue, in two sentences a 10-year-old would understand.",
+      "output": "Sunlight is made of all the colors mixed together, but when it hits the air, blue light gets bounced around more than the other colors. So when you look up, you see all that scattered blue light coming at you from every direction, making the sky look blue!",
+      "input_tokens": 34,
+      "output_tokens": 76,
+      "latency_s": 1.839,
+      "cost_usd": 0.001242
+    },
+    {
+      "model": "claude-sonnet",
+      "provider": "anthropic",
+      "prompt_index": 9,
+      "prompt": "Write a short professional email declining a meeting invitation due to a scheduling conflict.",
+      "output": "**Subject: Unable to Attend \u2013 [Meeting Name] on [Date]**\n\nHi [Name],\n\nThank you for the invitation to [meeting topic/name] on [date] at [time]. Unfortunately, I have a scheduling conflict and won't be able to attend.\n\nWould it be possible to reschedule, or could you share any materials or notes from the meeting afterward? I'm happy to work around your availability if we look at alternative times.\n\nApologies for any inconvenience, and thank you for understanding.\n\nBest regards,\n[Your Name]\n[Your Title]\n[Contact Information]",
+      "input_tokens": 33,
+      "output_tokens": 251,
+      "latency_s": 3.28,
+      "cost_usd": 0.0038640000000000002
+    },
+    {
+      "model": "claude-sonnet",
+      "provider": "anthropic",
+      "prompt_index": 10,
+      "prompt": "A farmer has 17 sheep. All but 9 run away. How many are left? Explain your reasoning step by step.",
+      "output": "# Solving the Sheep Riddle\n\n**The answer is 9 sheep.**\n\n## Step-by-Step Reasoning\n\nThe phrase \"all but 9\" is the key to this puzzle. Let's break down what it actually means:\n\n1. **Parse the phrase carefully**: \"All but 9 run away\" means \"all sheep *except* 9 run away.\"\n\n2. **Identify what stays vs. what leaves**: \n   - The sheep that run away = all of them *except* 9\n   - The sheep that stay = the 9 that were excluded from running away\n\n3. **Do the math**:\n   - Total sheep: 17\n   - Sheep that ran away: 17 \u2212 9 = 8\n   - Sheep remaining: 9\n\n## Why This Is Tricky\n\nThis riddle plays on assumptions. Many people hear \"17 sheep\" and \"9\" and instinctively want to subtract (17 \u2212 9 = 8), assuming 9 is the number that *left*. But the phrase \"all but 9\" specifically means 9 is the number that *remains* \u2014 it's the exception to \"all\" running away.\n\n**Bottom line**: No matter how many sheep the farmer started with (even if it were 100), if \"all but 9 run away,\" the answer is always **9 sheep left**.",
+      "input_tokens": 43,
+      "output_tokens": 402,
+      "latency_s": 5.016,
+      "cost_usd": 0.0061589999999999995
+    },
+    {
+      "model": "claude-haiku",
+      "provider": "anthropic",
+      "prompt_index": 1,
+      "prompt": "Reformat this date to YYYY-MM-DD: March 3, 2026.",
+      "output": "2026-03-03",
+      "input_tokens": 28,
+      "output_tokens": 10,
+      "latency_s": 0.916,
+      "cost_usd": 6.24e-05
+    },
+    {
+      "model": "claude-haiku",
+      "provider": "anthropic",
+      "prompt_index": 2,
+      "prompt": "Extract the email address from: 'Reach me at jane.doe@acme.io anytime.'",
+      "output": "The email address is: **jane.doe@acme.io**",
+      "input_tokens": 30,
+      "output_tokens": 18,
+      "latency_s": 0.682,
+      "cost_usd": 9.6e-05
+    },
+    {
+      "model": "claude-haiku",
+      "provider": "anthropic",
+      "prompt_index": 3,
+      "prompt": "What is the capital of Australia?",
+      "output": "The capital of Australia is Canberra. It was purpose-built as a capital city and is located in the Australian Capital Territory (ACT), situated between the rival cities of Sydney and Melbourne.",
+      "input_tokens": 14,
+      "output_tokens": 44,
+      "latency_s": 1.074,
+      "cost_usd": 0.0001872
+    },
+    {
+      "model": "claude-haiku",
+      "provider": "anthropic",
+      "prompt_index": 4,
+      "prompt": "Convert this list to a comma-separated string: apples, bananas, cherries.",
+      "output": "apples, bananas, cherries\n\n(Note: Your list is already in comma-separated format. If you meant to convert a different format, please let me know!)",
+      "input_tokens": 26,
+      "output_tokens": 39,
+      "latency_s": 1.048,
+      "cost_usd": 0.0001768
+    },
+    {
+      "model": "claude-haiku",
+      "provider": "anthropic",
+      "prompt_index": 5,
+      "prompt": "Summarize in one sentence: The mitochondria is the powerhouse of the cell, producing ATP through respiration.",
+      "output": "The mitochondria generates energy for cells by producing ATP through the process of cellular respiration.",
+      "input_tokens": 32,
+      "output_tokens": 22,
+      "latency_s": 0.881,
+      "cost_usd": 0.0001136
+    },
+    {
+      "model": "claude-haiku",
+      "provider": "anthropic",
+      "prompt_index": 6,
+      "prompt": "Classify the sentiment (positive/negative/neutral): 'The delivery was late but the product is great.'",
+      "output": "# Sentiment Classification: **Mixed/Neutral-Positive**\n\n**Breakdown:**\n- **Negative element:** \"delivery was late\" - complaint about service\n- **Positive element:** \"product is great\" - satisfaction with the item itself\n\n**Overall classification:** This is a **mixed sentiment** statement, though it leans slightly **positive** because the satisfaction with the product outweighs the delivery complaint. If forced to choose a single category, **neutral-to-positive** would be most accurate, as the customer is ultimately satisfied despite the inconvenience.",
+      "input_tokens": 30,
+      "output_tokens": 124,
+      "latency_s": 1.915,
+      "cost_usd": 0.0005200000000000001
+    },
+    {
+      "model": "claude-haiku",
+      "provider": "anthropic",
+      "prompt_index": 7,
+      "prompt": "Compare the trade-offs between SQLite and PostgreSQL for a small web app.",
+      "output": "# SQLite vs PostgreSQL for Small Web Apps\n\n## Quick Comparison\n\n| Factor | SQLite | PostgreSQL |\n|--------|--------|-----------|\n| **Setup** | Zero config | Requires server |\n| **Concurrency** | Limited | Excellent |\n| **Data size** | <10GB ideal | Unlimited |\n| **Backups** | Single file | More complex |\n| **Cost** | Free | Free (self-hosted) |\n\n## SQLite: Best For\n\n**Ideal scenarios:**\n- Single-user or low-traffic apps\n- Prototypes and MVPs\n- Static content sites\n- Development/testing environments\n- Desktop/mobile apps with local data\n\n**Advantages:**\n```bash\n# Zero setup\u2014just use it\nconst db = new Database(':memory:');\n\n# Single file easy to backup\ncp app.db backup.db\n\n# Perfect for embedded use\n```\n\n**Limitations:**\n- Only one writer at a time (file locks)\n- Poor for concurrent requests\n- Not suitable for distributed systems\n\n---\n\n## PostgreSQL: Best For\n\n**Ideal scenarios:**\n- Multi-user applications\n- >100 concurrent users\n- Complex queries/advanced features needed\n- Team collaboration on same database\n- Production apps requiring reliability\n\n**Advantages:**\n```sql\n-- Advanced features unavailable in SQLite\nCREATE TABLE users (\n  id BIGSERIAL PRIMARY KEY,\n  data JSONB,\n  search TSVECTOR\n);\n\nCREATE INDEX idx_search ON users USING GIN(search);\n```\n\n- True ACID compliance\n- Row-level locking (concurrent writes)\n- Full-text search, JSON support, arrays\n- Replication & backup tools\n- Better security/authentication\n\n**Disadvantages:**\n- Requires separate server process\n- More complex to deploy\n- Higher memory overhead\n\n---\n\n## Decision Framework\n\n### Choose **SQLite** if:\n```\nTraffic: <100 requests/second\nUsers: <10 concurrent\nData: <5GB\nSetup time: Hours matter\nTeam size: Solo developer\n```\n\n### Choose **PostgreSQL** if:\n```\nTraffic: Grows unpredictably\nUsers: >10-20 concurrent\nAdvanced queries: Full-text, JSON, arrays\nUptime: Critical\nTeam: Multiple developers\n```\n\n---\n\n## Practical Example: Scaling Scenario\n\n```python\n# Day 1: SQLite is fine\nfrom flask import Flask\nfrom flask_sqlalchemy import SQLAlchemy\n\napp = Flask(__name__)\napp.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'\ndb = SQLAlchemy(app)\n```\n\n```python\n# Month 6: Too many locks, switching to PostgreSQL\napp.config['SQLALCHEMY_DATABASE_URI'] = \\\n    'postgresql://user:pass@localhost/myapp'\n\n# Same code works! Just change connection string\n```\n\n---\n\n## Hybrid Approach\n\nUse **both** for specific use cases:\n\n```\nPostgreSQL: Main application database\nSQLite: Local cache/session store on each server\nSQLite: Analytics/reporting database (read-only copy)\n```\n\n---\n\n## Migration Path\n\n**Start with SQLite if uncertain:**\n- Fast iteration on features\n- Minimal DevOps friction\n- Easy to migrate to PostgreSQL later (same SQL dialects overlap ~80%)\n\n**Switch when you hit limits:**\n- Frequent \"database is locked\" errors\n- Response times degrade under load\n- Adding concurrent features\n\nUse an ORM (SQLAlchemy, Prisma) to make the switch painless.",
+      "input_tokens": 24,
+      "output_tokens": 818,
+      "latency_s": 13.179,
+      "cost_usd": 0.0032911999999999998
+    },
+    {
+      "model": "claude-haiku",
+      "provider": "anthropic",
+      "prompt_index": 8,
+      "prompt": "Explain why the sky appears blue, in two sentences a 10-year-old would understand.",
+      "output": "# Why the Sky is Blue\n\nWhen sunlight enters our atmosphere, it bumps into tiny air molecules that scatter the blue light in all directions because blue light has shorter waves that are easier to bounce around. Since blue light is scattered everywhere above us, our eyes see blue no matter where we look in the sky!",
+      "input_tokens": 28,
+      "output_tokens": 67,
+      "latency_s": 2.833,
+      "cost_usd": 0.0002904
+    },
+    {
+      "model": "claude-haiku",
+      "provider": "anthropic",
+      "prompt_index": 9,
+      "prompt": "Write a short professional email declining a meeting invitation due to a scheduling conflict.",
+      "output": "# Email: Meeting Declined\n\n**Subject:** Re: [Meeting Title] \u2013 Unable to Attend\n\nDear [Name],\n\nThank you for the invitation to [meeting title] on [date/time]. I appreciate you including me.\n\nUnfortunately, I have a prior commitment at that time and am unable to attend. I apologize for any inconvenience this may cause.\n\nIf you'd like to reschedule, I'm happy to work around my calendar. Alternatively, please feel free to share any notes or updates from the meeting, and I'll follow up with you afterward if needed.\n\nThank you for understanding.\n\nBest regards,\n[Your Name]",
+      "input_tokens": 22,
+      "output_tokens": 142,
+      "latency_s": 1.988,
+      "cost_usd": 0.0005855999999999999
+    },
+    {
+      "model": "claude-haiku",
+      "provider": "anthropic",
+      "prompt_index": 10,
+      "prompt": "A farmer has 17 sheep. All but 9 run away. How many are left? Explain your reasoning step by step.",
+      "output": "# Step-by-Step Reasoning\n\n**Step 1: Understand what \"all but 9\" means**\n\"All but 9\" is a phrase that means \"everything except 9\" or \"9 remain.\"\n\n**Step 2: Identify the key information**\n- Total sheep: 17\n- Sheep that run away: All but 9 (meaning 9 don't run away)\n\n**Step 3: Calculate**\nIf all but 9 run away, then 9 sheep are left.\n\n**Answer: 9 sheep are left**\n\n---\n\n**Alternative way to think about it:**\n- Sheep that run away = 17 - 9 = 8\n- Sheep remaining = 17 - 8 = 9 \u2713",
+      "input_tokens": 36,
+      "output_tokens": 180,
+      "latency_s": 1.826,
+      "cost_usd": 0.0007488
+    },
+    {
+      "model": "llama-local",
+      "provider": "ollama",
+      "prompt_index": 1,
+      "prompt": "Reformat this date to YYYY-MM-DD: March 3, 2026.",
+      "output": "The date \"March 3, 2026\" in the format YYYY-MM-DD is:\n\n2026-03-03",
+      "input_tokens": 42,
+      "output_tokens": 26,
+      "latency_s": 0.948,
+      "cost_usd": 0.0
+    },
+    {
+      "model": "llama-local",
+      "provider": "ollama",
+      "prompt_index": 2,
+      "prompt": "Extract the email address from: 'Reach me at jane.doe@acme.io anytime.'",
+      "output": "The email address is: jane.doe@acme.io",
+      "input_tokens": 44,
+      "output_tokens": 13,
+      "latency_s": 0.569,
+      "cost_usd": 0.0
+    },
+    {
+      "model": "llama-local",
+      "provider": "ollama",
+      "prompt_index": 3,
+      "prompt": "What is the capital of Australia?",
+      "output": "The capital of Australia is Canberra.",
+      "input_tokens": 32,
+      "output_tokens": 8,
+      "latency_s": 0.381,
+      "cost_usd": 0.0
+    },
+    {
+      "model": "llama-local",
+      "provider": "ollama",
+      "prompt_index": 4,
+      "prompt": "Convert this list to a comma-separated string: apples, bananas, cherries.",
+      "output": "Here is the list converted to a comma-separated string:\n\napples, bananas, cherries",
+      "input_tokens": 41,
+      "output_tokens": 19,
+      "latency_s": 0.658,
+      "cost_usd": 0.0
+    },
+    {
+      "model": "llama-local",
+      "provider": "ollama",
+      "prompt_index": 5,
+      "prompt": "Summarize in one sentence: The mitochondria is the powerhouse of the cell, producing ATP through respiration.",
+      "output": "The mitochondria is a crucial organelle found within cells that generates most of the energy they need to function, producing ATP (adenosine triphosphate) through the process of cellular respiration.",
+      "input_tokens": 48,
+      "output_tokens": 42,
+      "latency_s": 1.227,
+      "cost_usd": 0.0
+    },
+    {
+      "model": "llama-local",
+      "provider": "ollama",
+      "prompt_index": 6,
+      "prompt": "Classify the sentiment (positive/negative/neutral): 'The delivery was late but the product is great.'",
+      "output": "I would classify the sentiment as mixed, but leaning towards neutral.\n\nThe statement acknowledges a negative aspect (\"late\") and a positive one (\"great\"), which indicates a neutral overall tone. However, since the negative comment is mitigated by the positive description of the product, it's not strictly negative or overwhelmingly positive.",
+      "input_tokens": 47,
+      "output_tokens": 63,
+      "latency_s": 1.762,
+      "cost_usd": 0.0
+    },
+    {
+      "model": "llama-local",
+      "provider": "ollama",
+      "prompt_index": 7,
+      "prompt": "Compare the trade-offs between SQLite and PostgreSQL for a small web app.",
+      "output": "# SQLite vs PostgreSQL: A Comparison for Small Web Apps\n\nWhen it comes to choosing a database management system (DBMS) for a small web application, two popular options are SQLite and PostgreSQL. Both have their strengths and weaknesses, which we'll explore in this comparison.\n\n### SQLite\n\nSQLite is a self-contained, file-based database that's widely used in mobile and embedded systems due to its size and efficiency. For web applications, SQLite has some advantages:\n\n*   **Lightweight**: SQLite is relatively small (around 400 KB) and can be easily integrated into web projects.\n*   **Easy setup**: SQLite doesn't require a separate server process, making it simple to set up and use.\n*   **Fast development**: SQLite's fast startup time and quick queries make it ideal for rapid prototyping and development.\n\nHowever, there are also some trade-offs:\n\n*   **Limited scalability**: SQLite is not designed for large-scale applications. As the database grows, performance may degrade significantly.\n*   **No ACID compliance**: SQLite does not support atomicity, consistency, isolation, and durability (ACID) properties, which can lead to data inconsistencies.\n\n### PostgreSQL\n\nPostgreSQL, on the other hand, is a powerful, open-source DBMS that's widely used in web applications due to its scalability, reliability, and feature-rich capabilities. For small web applications, PostgreSQL has some advantages:\n\n*   **Scalability**: PostgreSQL is designed for large-scale applications and can handle significant traffic without degrading performance.\n*   **ACID compliance**: PostgreSQL supports ACID properties, ensuring data consistency and integrity.\n*   **Extensive features**: PostgreSQL offers a wide range of features, including support for advanced query types (e.g., JSON, LATERAL joins), materialized views, and more.\n\nHowever, there are also some trade-offs:\n\n*   **Resource-intensive**: PostgreSQL requires more resources (CPU, memory, disk space) compared to SQLite.\n*   **Steeper learning curve**: PostgreSQL's complexity can make it challenging for developers without prior experience with DBMS.\n\n### Choosing Between SQLite and PostgreSQL\n\nBased on your specific requirements, here are some guidelines to help you choose between SQLite and PostgreSQL:\n\n*   **Small web application with limited traffic**: SQLite might be sufficient due to its lightweight nature and ease of setup.\n*   **Web application with moderate to high traffic or complex queries**: PostgreSQL's scalability, reliability, and feature-rich capabilities make it a better choice.\n\nIn conclusion, while both SQLite and PostgreSQL are viable options for small web applications, PostgreSQL offers more features, scalability, and reliability, making it a popular choice among developers. However, if you're building a simple web app with limited traffic, SQLite can still be an excellent option due to its ease of use and lightweight nature.\n\n### Example Use Cases\n\nHere's an example use case for each DBMS:\n\n**SQLite**\n\n```python\nimport sqlite3\n\n# Create a new database\nconn = sqlite3.connect('my_database.db')\n\n# Create a cursor object\ncur = conn.cursor()\n\n# Create a table\ncur.execute('''\n    CREATE TABLE users (\n        id INTEGER PRIMARY KEY,\n        name TEXT NOT NULL,\n        email TEXT NOT NULL\n    );\n''')\n\n# Insert some data\ncur.execute(\"INSERT INTO users (name, email) VALUES ('John Doe', 'john.doe@example.com');\")\nconn.commit()\n\n# Close the connection\nconn.close()\n```\n\n**PostgreSQL**\n\n```python\nimport psycopg2\n\n# Connect to the database\nconn = psycopg2.connect(\n    host=\"localhost\",\n    database=\"my_database\",\n    user=\"my_username\",\n    password=\"my_password\"\n)\n\n# Create a cursor object\ncur = conn.cursor()\n\n# Create a table\ncur.execute('''\n    CREATE TABLE users (\n        id SERIAL PRIMARY KEY,\n        name TEXT NOT NULL,\n        email TEXT NOT NULL\n    );\n''')\n\n# Insert some data\ncur.execute(\"INSERT INTO users (name, email) VALUES ('John Doe', 'john.doe@example.com');\")\nconn.commit()\n\n# Close the connection\nconn.close()\n```\n\nRemember to replace placeholders with your actual database credentials and schema definitions.",
+      "input_tokens": 39,
+      "output_tokens": 843,
+      "latency_s": 21.657,
+      "cost_usd": 0.0
+    },
+    {
+      "model": "llama-local",
+      "provider": "ollama",
+      "prompt_index": 8,
+      "prompt": "Explain why the sky appears blue, in two sentences a 10-year-old would understand.",
+      "output": "When sunlight enters Earth's atmosphere, it scatters off tiny molecules of gases like nitrogen and oxygen, kind of like how light scatters off bubbles in a soap solution. This scattering effect makes the blue wavelengths of light travel more directly to our eyes from all parts of the sky, giving it that beautiful blue color we see every day!",
+      "input_tokens": 44,
+      "output_tokens": 68,
+      "latency_s": 1.912,
+      "cost_usd": 0.0
+    },
+    {
+      "model": "llama-local",
+      "provider": "ollama",
+      "prompt_index": 9,
+      "prompt": "Write a short professional email declining a meeting invitation due to a scheduling conflict.",
+      "output": "Here is a sample email:\n\nSubject: Declining Meeting Invitation\n\nDear [Name],\n\nI appreciate you inviting me to the meeting on [Date and Time] at [Location]. Unfortunately, I have a conflicting commitment at that time and will be unable to attend.\n\nWould it be possible to schedule an alternative time that works for both of us? I am available to meet at your convenience and look forward to discussing [Topic] with you when a suitable time is reached.\n\nThank you for understanding and I hope to hear from you soon.\n\nBest regards,\n[Your Name]",
+      "input_tokens": 40,
+      "output_tokens": 114,
+      "latency_s": 3.038,
+      "cost_usd": 0.0
+    },
+    {
+      "model": "llama-local",
+      "provider": "ollama",
+      "prompt_index": 10,
+      "prompt": "A farmer has 17 sheep. All but 9 run away. How many are left? Explain your reasoning step by step.",
+      "output": "To solve this problem, let's break it down step by step:\n\n1. The farmer starts with 17 sheep.\n2. \"All but 9\" means that if all the sheep were to run away, we're only counting the ones that would stay behind, which is 9 in this case.\n3. This implies that there are 17 - 9 = 8 sheep that actually ran away from the farmer's flock.\n\nHowever, the question asks for the number of sheep left, and it specifically states \"how many are left\". Since the sheep that ran away were all that were initially not with the farmer (the ones he had to start with), we should focus on those. \n\n4. The correct interpretation is that if 9 sheep stayed behind, this means there were only these 9 that were initially present with the farmer.\n\nSo, the correct answer is 9 sheep are left.",
+      "input_tokens": 51,
+      "output_tokens": 184,
+      "latency_s": 4.802,
+      "cost_usd": 0.0
+    }
+  ]
+}
