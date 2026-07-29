@@ -78,3 +78,9 @@ signals:
     note: Single value or short string trends Tier 1; structured or long-form output trends Tier 2-3.
   reasoning_required:
     note: Any "show your work", multi-hop, or judgment requirement forces Tier 3.
+  char_count:
+    note: Raw prompt length; complements token_count and helps separate terse Tier 1 from wordier Tier 2-3.
+  question_count:
+    note: Number of "?" — direct-question phrasing skews toward Tier 1 basic Q&A.
+  has_numbers:
+    note: Presence of digits flags Tier 1 extraction/formatting and Tier 3 math word problems.
