@@ -2,3 +2,6 @@
 .venv/
 __pycache__/
 *.local.md
+
+# Generated feature matrix — regenerate with `python -m scripts.inspect_dataset`
+data/prompt_features.json
