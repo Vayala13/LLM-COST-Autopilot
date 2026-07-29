@@ -9,10 +9,10 @@
 ## Current Status
 
 - **Phase:** 2 of 6 — Complexity Classifier (in progress)
-- **Last completed:** 2.1 complexity tiers → `configs/complexity_tiers.yaml` (3 tiers + distinguishing signals). Provider set: `claude-sonnet`, `claude-haiku`, `gemini-flash`, `llama-local`.
-- **Next action:** Phase 2.2 — write 200+ hand-labeled example prompts across the 3 tiers and extract features (token count, instruction verbs, constraint count, context provided, output-format complexity).
+- **Last completed:** 2.2 labeled dataset + feature extraction. `data/labeled_prompts.jsonl` (201 hand-labeled prompts: 72/62/67 across tiers 1/2/3). `app/classifier/features.py` extracts 11 features (verb lists loaded from the tiers YAML). `scripts/inspect_dataset.py` validates balance and writes `data/prompt_features.json`. Mean feature values separate cleanly by tier.
+- **Next action:** Phase 2.3 — train a scikit-learn classifier (logistic regression / random forest) on `data/prompt_features.json`. Track accuracy + confusion matrix on a held-out set; target >80%.
 - **Blockers:** None. OpenAI disabled in `.env` (invalid key, 401) — not required; GPT pricing stays in registry for the Phase 4.3 "vs GPT-4o" cost math.
-- **Last updated:** 2026-07-24
+- **Last updated:** 2026-07-29
 
 > **Update rule:** Whenever a step is finished, change "Last completed", set "Next action" to the next unchecked box, and add a line to the Session Log.
 
@@ -63,7 +63,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 ### Phase 2: Complexity Classifier (Day 3–6)
 
 - [x] **2.1 Define complexity tiers** — Tier 1 (simple): reformatting, extraction, basic Q&A from provided context. Tier 2 (moderate): summarization, classification, structured analysis. Tier 3 (complex): multi-step reasoning, creative generation, nuanced judgment. → `configs/complexity_tiers.yaml`.
-- [ ] **2.2 Labeled dataset** — Write 200+ example prompts across all three tiers, hand-labeled. Extract features: token count, presence of instructions like "analyze"/"compare", number of constraints, whether context is provided, output format complexity.
+- [x] **2.2 Labeled dataset** — 201 hand-labeled prompts in `data/labeled_prompts.jsonl`; 11 features extracted by `app/classifier/features.py`; validated via `scripts/inspect_dataset.py` → `data/prompt_features.json`.
 - [ ] **2.3 Train the classifier** — Start with simple scikit-learn (logistic regression or random forest) on the extracted features. Goal is the routing skeleton, not perfection. Track accuracy and confusion matrix. >80% on a held-out set is fine for V1.
 - [ ] **2.4 Routing map** — Map tier → model. Tier 1 → cheapest (Haiku or local Llama). Tier 2 → mid (GPT-4o-mini or Sonnet). Tier 3 → highest quality (GPT-4o or Opus). Store as configurable YAML so models can be swapped without code changes.
 
@@ -99,6 +99,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 
 | Date | Phase/Step | What happened | Next |
 |---|---|---|---|
+| 2026-07-29 | 2.2 | Built the labeled dataset: `data/labeled_prompts.jsonl` (201 hand-labeled prompts, 72/62/67 across tiers 1/2/3). Added `app/classifier/features.py` extracting 11 features (token/char count, per-tier instruction-verb counts loaded from the tiers YAML, constraint count, context-provided, reasoning-required, question marks, has-numbers, output-format complexity). `scripts/inspect_dataset.py` validates tier balance + duplicates and writes `data/prompt_features.json`. Mean feature values separate cleanly by tier. Added PyYAML to requirements. Also cloned the SIGAI-Pilot team docs repo as a sibling folder for documentation. | Phase 2.3 (train scikit-learn classifier, >80% held-out) |
 | 2026-07-24 | 2.1 | Defined the 3 complexity tiers in `configs/complexity_tiers.yaml` (summaries, task types, example prompts, provisional targets, and the feature signals the classifier will use). Disabled the invalid OpenAI key in `.env` so baseline runs skip cleanly. | Phase 2.2 (labeled dataset + features) |
 | 2026-07-24 | 1.3 | Reinstalled Ollama (empty app bundle was the blocker), pulled `llama3.2`, started daemon. Ran the full 10-prompt baseline across `claude-sonnet`, `claude-haiku`, `llama-local` → 30 records in `data/baseline_results.json`. Cost totals: Sonnet $0.0386, Haiku $0.0061 (−84%), Llama $0.00. Added Gemini provider: `gemini-flash` (`gemini-flash-latest`) works as a Tier 2 model; `gemini-pro` dropped (free tier has 0-request quota → 429). Installed Figma plugin + drafted architecture diagram (pending plan selection). | Phase 2.1 (complexity tiers) |
 | 2026-07-23 | 1.1–1.3 | Built `app/providers/` (ModelConfig registry, Response, unified `send_request`), 10 baseline prompts, and `scripts/baseline_test.py`. Live smoke test passed on Anthropic; OpenAI/Ollama skip gracefully. Also set up foundation (.env, config.py, venv) and a portfolio devlog site. | Full 10-prompt baseline once OpenAI/Ollama available, then Phase 2.1 |
