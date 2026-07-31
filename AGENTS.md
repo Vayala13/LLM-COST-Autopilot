@@ -8,9 +8,9 @@
 
 ## Current Status
 
-- **Phase:** 2 of 6 — Complexity Classifier (in progress)
-- **Last completed:** 2.3 trained classifier. Compared logistic regression vs random forest on a stratified 25% holdout (201 examples, 11 features). Both hit 88.2% held-out accuracy (target >80%). Winner: logistic regression → `models/complexity_classifier.joblib`. Metrics + confusion matrices in `data/classifier_metrics.json`. Inference helpers: `app/classifier/model.py` (`predict_tier`). Train via `python -m scripts.train_classifier`.
-- **Next action:** Phase 2.4 — routing map YAML (tier → model). Tier 1 → cheapest; Tier 2 → mid; Tier 3 → highest quality.
+- **Phase:** 3 of 6 — Async Quality Verification Loop (next)
+- **Last completed:** 2.4 routing map. `configs/routing_map.yaml` maps Tier 1 → `llama-local`, Tier 2 → `gemini-flash`, Tier 3 → `claude-sonnet` (swappable without code changes). Loader: `app/router/map.py` (`model_for_tier`, `route_prompt`). Smoke: `python -m scripts.show_routing`.
+- **Next action:** Phase 3.1 — define quality thresholds per use case (extraction / summarization / classification).
 - **Blockers:** None. OpenAI disabled in `.env` (invalid key, 401) — not required; GPT pricing stays in registry for the Phase 4.3 "vs GPT-4o" cost math.
 - **Last updated:** 2026-07-31
 
@@ -65,7 +65,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 - [x] **2.1 Define complexity tiers** — Tier 1 (simple): reformatting, extraction, basic Q&A from provided context. Tier 2 (moderate): summarization, classification, structured analysis. Tier 3 (complex): multi-step reasoning, creative generation, nuanced judgment. → `configs/complexity_tiers.yaml`.
 - [x] **2.2 Labeled dataset** — 201 hand-labeled prompts in `data/labeled_prompts.jsonl`; 11 features extracted by `app/classifier/features.py`; validated via `scripts/inspect_dataset.py` → `data/prompt_features.json`.
 - [x] **2.3 Train the classifier** — Logistic regression vs random forest on `data/prompt_features.json`; both 88.2% held-out. Winner LR → `models/complexity_classifier.joblib`; metrics in `data/classifier_metrics.json`.
-- [ ] **2.4 Routing map** — Map tier → model. Tier 1 → cheapest (Haiku or local Llama). Tier 2 → mid (GPT-4o-mini or Sonnet). Tier 3 → highest quality (GPT-4o or Opus). Store as configurable YAML so models can be swapped without code changes.
+- [x] **2.4 Routing map** — `configs/routing_map.yaml`: Tier 1 → `llama-local`, Tier 2 → `gemini-flash`, Tier 3 → `claude-sonnet`. Loader `app/router/map.py`; smoke via `python -m scripts.show_routing`.
 
 ### Phase 3: Async Quality Verification Loop (Day 6–9)
 
@@ -99,6 +99,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 
 | Date | Phase/Step | What happened | Next |
 |---|---|---|---|
+| 2026-07-31 | 2.4 | Added `configs/routing_map.yaml` (Tier 1 → llama-local, Tier 2 → gemini-flash, Tier 3 → claude-sonnet). Implemented `app/router/map.py` (`load_routing_map`, `model_for_tier`, `route_prompt`) validating registry keys on load. Smoke script `scripts/show_routing.py`. Phase 2 complete. | Phase 3.1 (quality thresholds) |
 | 2026-07-31 | 2.3 | Trained scikit-learn classifiers on 11 features / 201 prompts. Stratified 75/25 split. Logistic regression and random forest both 88.2% held-out accuracy (target >80%). Saved winner (logistic regression) to `models/complexity_classifier.joblib`, metrics to `data/classifier_metrics.json`. Added `app/classifier/model.py` (`load_classifier`, `predict_tier`) and `scripts/train_classifier.py`. Pinned scikit-learn/numpy/joblib in requirements. | Phase 2.4 (routing map YAML) |
 | 2026-07-29 | 2.2 | Built the labeled dataset: `data/labeled_prompts.jsonl` (201 hand-labeled prompts, 72/62/67 across tiers 1/2/3). Added `app/classifier/features.py` extracting 11 features (token/char count, per-tier instruction-verb counts loaded from the tiers YAML, constraint count, context-provided, reasoning-required, question marks, has-numbers, output-format complexity). `scripts/inspect_dataset.py` validates tier balance + duplicates and writes `data/prompt_features.json`. Mean feature values separate cleanly by tier. Added PyYAML to requirements. Also cloned the SIGAI-Pilot team docs repo as a sibling folder for documentation. | Phase 2.3 (train scikit-learn classifier, >80% held-out) |
 | 2026-07-24 | 2.1 | Defined the 3 complexity tiers in `configs/complexity_tiers.yaml` (summaries, task types, example prompts, provisional targets, and the feature signals the classifier will use). Disabled the invalid OpenAI key in `.env` so baseline runs skip cleanly. | Phase 2.2 (labeled dataset + features) |

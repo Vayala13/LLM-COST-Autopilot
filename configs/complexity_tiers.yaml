@@ -24,7 +24,7 @@ tiers:
       - "Convert 'March 3, 2026' to YYYY-MM-DD."
       - "Extract the email address from: contact jane.doe@acme.io for details."
       - "Turn this list into a comma-separated string: apples, bananas, cherries."
-    default_target: llama-local  # provisional; final mapping lives in 2.4
+    default_target: llama-local  # see configs/routing_map.yaml (Phase 2.4 source of truth)
 
   - id: 2
     name: moderate
@@ -41,7 +41,7 @@ tiers:
       - "Summarize this product review in one sentence."
       - "Classify the sentiment of this feedback as positive, negative, or mixed."
       - "Explain why mitochondria are called the powerhouse of the cell."
-    default_target: gemini-flash  # provisional; final mapping lives in 2.4
+    default_target: gemini-flash  # see configs/routing_map.yaml (Phase 2.4 source of truth)
 
   - id: 3
     name: complex
@@ -58,7 +58,7 @@ tiers:
       - "A farmer has 17 sheep, all but 9 run away. How many are left? Show your reasoning."
       - "Compare SQLite vs PostgreSQL for a small web app and recommend one."
       - "Draft a polite email declining a meeting invitation."
-    default_target: claude-sonnet  # provisional; final mapping lives in 2.4
+    default_target: claude-sonnet  # see configs/routing_map.yaml (Phase 2.4 source of truth)
 
 # Feature signals the classifier (2.3) will extract from each prompt to decide a
 # tier. Documented here so 2.2 feature engineering stays aligned with intent.
