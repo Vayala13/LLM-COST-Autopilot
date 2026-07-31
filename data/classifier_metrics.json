@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-07-31T23:44:55.198701+00:00",
+  "n_examples": 201,
+  "test_size": 0.25,
+  "random_state": 42,
+  "target_accuracy": 0.8,
+  "models": [
+    {
+      "name": "logistic_regression",
+      "accuracy": 0.8823529411764706,
+      "confusion_matrix": [
+        [
+          18,
+          0,
+          0
+        ],
+        [
+          3,
+          11,
+          2
+        ],
+        [
+          0,
+          1,
+          16
+        ]
+      ],
+      "labels": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "random_forest",
+      "accuracy": 0.8823529411764706,
+      "confusion_matrix": [
+        [
+          18,
+          0,
+          0
+        ],
+        [
+          1,
+          12,
+          3
+        ],
+        [
+          1,
+          1,
+          15
+        ]
+      ],
+      "labels": [
+        1,
+        2,
+        3
+      ]
+    }
+  ],
+  "winner": "logistic_regression",
+  "winner_accuracy": 0.8823529411764706,
+  "model_path": "models/complexity_classifier.joblib"
+}
