@@ -211,41 +211,56 @@
   /* ---------- Timeline / log ---------- */
   .timeline { position: relative; margin-top: 1rem; }
   .log-entry {
-    position: relative;
-    padding: 0 0 2rem 1.75rem;
-    border-left: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: 7.5rem 1fr;
+    column-gap: 1.5rem;
+    padding: 0 0 2.25rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2.25rem;
   }
-  .log-entry:last-child { border-left: 1px solid transparent; }
-  .log-entry::before {
-    content: "";
-    position: absolute;
-    left: -5px; top: 0.35rem;
-    width: 9px; height: 9px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent-dim);
+  .log-entry:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
   }
   .log-date {
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--muted);
+    padding-top: 0.35rem;
+    white-space: nowrap;
   }
+  .log-main { min-width: 0; }
+
+  /* Friend-style outline badge: thin border, transparent fill, all-caps mono */
   .kicker {
     display: inline-block;
     font-family: var(--font-mono);
     font-size: 0.62rem;
-    letter-spacing: 0.1em;
+    font-weight: 500;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
-    margin: 0.5rem 0.5rem 0.5rem 0;
-    border: 1px solid var(--line-strong);
-    color: var(--muted);
+    padding: 0.28rem 0.55rem;
+    border-radius: 3px;
+    margin: 0 0 0.75rem;
+    border: 1px solid rgba(238, 241, 245, 0.55);
+    background: transparent;
+    color: var(--ink);
   }
-  .kicker.tried { border-color: var(--amber); color: var(--amber); }
-  .kicker.started { border-color: var(--accent-dim); color: var(--accent); }
-  .log-title { font-size: 1.15rem; font-weight: 700; margin: 0.4rem 0 0.6rem; }
+  .kicker.tried { border-color: rgba(238, 241, 245, 0.55); color: var(--ink); }
+  .kicker.started { border-color: rgba(238, 241, 245, 0.55); color: var(--ink); }
+
+  .log-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 0 0 0.75rem;
+    line-height: 1.25;
+  }
   .log-body { color: #c4ccd6; font-size: 0.92rem; line-height: 1.7; max-width: 64ch; }
+  .log-body p { margin: 0 0 0.75rem; }
   .log-body ul { padding-left: 1.1rem; margin: 0.6rem 0; }
   .log-body li { margin-bottom: 0.4rem; }
   .log-body code {
@@ -271,6 +286,10 @@
   @media (max-width: 640px) {
     header.masthead { flex-direction: column; align-items: flex-start; }
     .contact { text-align: left; }
+    .log-entry {
+      grid-template-columns: 1fr;
+      row-gap: 0.4rem;
+    }
   }
 </style>
 </head>
@@ -303,8 +322,13 @@
    EDIT HERE. This is the only part you touch to update your log.
    - Add a new entry to a project's `log` array (newest first).
    - Flip a phase `status` to "done" / "wip" / "planned".
-   - kicker options: "tried" (Tried this) or "started" (Started my cool thing)
+   - kicker options: "tried" → TRIED THIS  |  "started" → STARTED MY COOL THING
    ===================================================================== */
+const KICKER_LABEL = {
+  tried: "Tried this",
+  started: "Started my cool thing"
+};
+
 const OWNER = {
   name: "Your Name",
   email: "you@example.com",
@@ -319,14 +343,27 @@ const PROJECTS = [
     stack: ["Python", "Anthropic", "OpenAI", "Ollama", "FastAPI", "scikit-learn", "SQLite", "Streamlit", "Docker"],
     repo: "https://github.com/you/llm-cost-autopilot",
     phases: [
-      { name: "Unified Model Interface", status: "wip" },
-      { name: "Complexity Classifier", status: "planned" },
+      { name: "Unified Model Interface", status: "done" },
+      { name: "Complexity Classifier", status: "done" },
       { name: "Async Quality Verification", status: "planned" },
       { name: "Logging & Cost Dashboard", status: "planned" },
       { name: "Expose as an API", status: "planned" },
       { name: "Portfolio Polish", status: "planned" }
     ],
     log: [
+      {
+        date: "JUL 31 2026",
+        kicker: "tried",
+        title: "Phase 2.3 — logistic regression vs random forest for tier routing",
+        body: `<p>Trained two scikit-learn models on 201 labeled prompts / 11 features and kept a stratified holdout so I wasn't grading on the training set.</p>
+          <ul>
+            <li>Both logistic regression and random forest hit <code>88.2%</code> held-out accuracy (target &gt;80%).</li>
+            <li>On a tie I kept logistic regression — simpler for a V1 routing skeleton.</li>
+            <li>Saved the winner to <code>models/complexity_classifier.joblib</code> and metrics to <code>data/classifier_metrics.json</code>.</li>
+            <li>Wired <code>predict_tier</code> so Phase 2.4 can map a prompt → cheapest capable model.</li>
+          </ul>
+          <p>Next up was the YAML routing map (Tier 1 → local Llama, Tier 2 → Gemini Flash, Tier 3 → Claude Sonnet).</p>`
+      },
       {
         date: "JUL 23 2026",
         kicker: "started",
@@ -401,12 +438,14 @@ function phaseTracker(p) {
 
 function timeline(p) {
   const entries = p.log.map(e => `
-    <div class="log-entry">
+    <article class="log-entry">
       <div class="log-date">${e.date}</div>
-      <span class="kicker ${e.kicker}">${e.kicker === "tried" ? "Tried this" : "Started my cool thing"}</span>
-      <h3 class="log-title">${e.title}</h3>
-      <div class="log-body">${e.body}</div>
-    </div>`).join("");
+      <div class="log-main">
+        <span class="kicker ${e.kicker}">${KICKER_LABEL[e.kicker] || e.kicker}</span>
+        <h3 class="log-title">${e.title}</h3>
+        <div class="log-body">${e.body}</div>
+      </div>
+    </article>`).join("");
   return `<p class="section-label">Devlog</p><div class="timeline">${entries}</div>`;
 }
 
