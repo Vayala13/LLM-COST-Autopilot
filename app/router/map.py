@@ -6,7 +6,6 @@ changes. Registry keys are validated on load.
 
 from __future__ import annotations
 
-from functools import lru_cache
 from pathlib import Path
 
 import yaml
@@ -17,10 +16,15 @@ _ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_MAP_PATH = _ROOT / "configs" / "routing_map.yaml"
 
 
-@lru_cache(maxsize=1)
 def load_routing_map(path: str | None = None) -> dict[int, str]:
-    """Return {tier_id: MODEL_REGISTRY key} from the routing YAML."""
+    """Return {tier_id: MODEL_REGISTRY key} from the routing YAML.
+
+    Always re-reads the file so YAML edits apply without a process restart
+    (Phase 5.2 PUT /v1/routing-config can rely on this).
+    """
     map_path = Path(path) if path else DEFAULT_MAP_PATH
+    # Only load project config paths in production callers — path is unconstrained
+    # for local smoke/tests; do not pass untrusted user paths here.
     data = yaml.safe_load(map_path.read_text())
     routing = data.get("routing") or {}
     resolved: dict[int, str] = {}
