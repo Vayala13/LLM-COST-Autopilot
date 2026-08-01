@@ -1,0 +1,48 @@
+# Phase 3.1 — quality thresholds per use case ("good enough" bars).
+#
+# Used by the async verifier (Phase 3.2) to decide pass/fail after a routed
+# response. Values are swappable here without code changes.
+#
+# Model keys (judge_model / reference_model) must be keys in
+# app.providers.registry.MODEL_REGISTRY.
+#
+# Note: the build plan named GPT-4o as the classification reference, but
+# OpenAI is disabled (invalid key). We use claude-sonnet — the highest-tier
+# active model — as the reference/judge. Swap to gpt-4o when OpenAI is enabled.
+
+version: 1
+
+use_cases:
+  extraction:
+    metric: field_coverage
+    threshold: 1.0
+    comparison: ">="
+    # Pass when (fields_present / fields_required) >= 1.0 — every required
+    # field must appear in the cheap-model output.
+    notes: >
+      Extraction is "good enough" when all key/required fields are present
+      (full field coverage). Partial matches fail and become routing-failure
+      candidates for Phase 3.2+.
+
+  summarization:
+    metric: llm_judge_score
+    threshold: 4.0
+    comparison: ">"
+    scale_max: 5
+    judge_model: claude-sonnet   # plan: LLM-as-judge; highest available tier
+    # Pass when judge_score > 4/5.
+    notes: >
+      Summarization is judged by a high-tier model on a 1–5 scale. Score must
+      be strictly greater than 4 (i.e. 5/5, or >4.0 if fractional scores are
+      used). Judge is claude-sonnet while OpenAI is disabled; alt: gpt-4o.
+
+  classification:
+    metric: label_agreement
+    threshold: 1.0
+    comparison: "=="
+    reference_model: claude-sonnet  # plan said GPT-4o; OpenAI disabled → Sonnet
+    # Pass when cheap-model label exactly matches the reference-model label.
+    notes: >
+      Classification is "good enough" when the routed model's label matches
+      what the reference high-tier model would have said (exact agreement).
+      Reference is claude-sonnet (highest available). Alt: gpt-4o when enabled.
