@@ -46,11 +46,14 @@ def _fake_response(text: str, model_key: str = "claude-sonnet") -> Response:
     )
 
 
+_MOCK_JUDGE_SCORE = "5"
+
+
 def _mock_send(prompt: str, model_config) -> Response:
     """Deterministic stand-in for send_request (no network)."""
     # Judge prompts ask for a score; classification / other get a label.
     if "impartial quality judge" in prompt.lower() or "score how well" in prompt.lower():
-        return _fake_response("5", "claude-sonnet")
+        return _fake_response(_MOCK_JUDGE_SCORE, "claude-sonnet")
     return _fake_response("positive", "claude-sonnet")
 
 
@@ -109,6 +112,8 @@ def test_verify_offline(failure_log: Path) -> None:
     print(f"OK extraction fail logged score={fail.score} lines={len(lines)}")
 
     # Summarization: mocked judge returns 5 → pass (> 4)
+    global _MOCK_JUDGE_SCORE
+    _MOCK_JUDGE_SCORE = "5"
     summ = verify(
         prompt="Summarize the article",
         cheap_output="A short accurate summary.",
@@ -121,6 +126,21 @@ def test_verify_offline(failure_log: Path) -> None:
     assert summ.comparison_model == "claude-sonnet"
     print(f"OK summarization pass score={summ.score} judge={summ.comparison_model}")
 
+    # Summarization: mocked judge returns 3 → routing failure
+    _MOCK_JUDGE_SCORE = "3"
+    summ_fail = verify(
+        prompt="Summarize the article",
+        cheap_output="meh",
+        use_case="summarization",
+        routed_model="gemini-flash",
+        send_request_fn=_mock_send,
+        failure_log_path=failure_log,
+    )
+    assert not summ_fail.passed and summ_fail.routing_failure
+    assert summ_fail.score == 3.0
+    _MOCK_JUDGE_SCORE = "5"
+    print(f"OK summarization fail score={summ_fail.score}")
+
     # Classification: cheap matches mocked reference → pass
     cls = verify(
         prompt="Classify sentiment: I love this.",
@@ -132,6 +152,19 @@ def test_verify_offline(failure_log: Path) -> None:
     )
     assert cls.passed and cls.score == 1.0
     print(f"OK classification pass score={cls.score} ref={cls.comparison_model}")
+
+    # Classification: mismatch → routing failure
+    cls_fail = verify(
+        prompt="Classify sentiment: I love this.",
+        cheap_output="negative",
+        use_case="classification",
+        routed_model="gemini-flash",
+        send_request_fn=_mock_send,
+        failure_log_path=failure_log,
+    )
+    assert not cls_fail.passed and cls_fail.routing_failure
+    assert cls_fail.score == 0.0
+    print(f"OK classification fail score={cls_fail.score}")
 
 
 async def test_enqueue(failure_log: Path) -> None:

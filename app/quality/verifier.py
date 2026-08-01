@@ -118,7 +118,8 @@ def _judge_prompt(prompt: str, cheap_output: str, scale_max: float) -> str:
         "You are an impartial quality judge. Score how well the SUMMARY "
         f"answers the PROMPT on a scale of 1 to {int(scale_max)} "
         f"(1=poor, {int(scale_max)}=excellent).\n"
-        "Reply with ONLY a single number (optionally as N/5). No explanation.\n\n"
+        f"Reply with ONLY a single number (optionally as N/{int(scale_max)}). "
+        "No explanation.\n\n"
         f"PROMPT:\n{prompt}\n\n"
         f"SUMMARY:\n{cheap_output}\n"
     )
@@ -153,7 +154,10 @@ def verify(
         detail = f"present={int(round(score * len(fields)))}/{len(fields)}"
     elif cfg.metric == "llm_judge_score":
         comparison_model = cfg.judge_model
-        assert comparison_model is not None  # validated on load
+        if not comparison_model:
+            raise ValueError(
+                f"use_case {use_case!r} metric llm_judge_score requires judge_model"
+            )
         scale_max = cfg.scale_max if cfg.scale_max is not None else 5.0
         judge_cfg = MODEL_REGISTRY[comparison_model]
         judge_resp = send(
@@ -161,10 +165,15 @@ def verify(
             judge_cfg,
         )
         score = parse_judge_score(judge_resp.output_text, scale_max=scale_max)
+        # Truncate; never echo the original prompt into logs/detail.
         detail = f"judge_raw={judge_resp.output_text.strip()[:80]!r}"
     elif cfg.metric == "label_agreement":
         comparison_model = cfg.reference_model
-        assert comparison_model is not None  # validated on load
+        if not comparison_model:
+            raise ValueError(
+                f"use_case {use_case!r} metric label_agreement requires "
+                "reference_model"
+            )
         ref_cfg = MODEL_REGISTRY[comparison_model]
         ref_resp = send(prompt, ref_cfg)
         cheap_label = normalize_label(cheap_output)

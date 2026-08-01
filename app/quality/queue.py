@@ -11,15 +11,10 @@ import asyncio
 import logging
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Callable
 
-from app.providers.registry import ModelConfig
-from app.providers.response import Response
-from app.quality.verifier import VerificationResult, verify
+from app.quality.verifier import SendRequestFn, VerificationResult, verify
 
 logger = logging.getLogger(__name__)
-
-SendRequestFn = Callable[[str, ModelConfig], Response]
 
 
 def enqueue_verification(
