@@ -1,0 +1,18 @@
+# Phase 2.4 — complexity tier → model routing map.
+#
+# Values are keys in app.providers.registry.MODEL_REGISTRY. Swap a model here
+# without changing code. OpenAI keys are listed as alternatives where the plan
+# named them; they stay unused while OPENAI_API_KEY is disabled.
+
+version: 1
+
+routing:
+  1:
+    model: llama-local          # cheapest ($0 local). Alt: claude-haiku
+    rationale: Tier 1 mechanical tasks — prefer zero-cost local Llama.
+  2:
+    model: gemini-flash         # mid cost/quality. Alt: gpt-4o-mini (when OpenAI enabled)
+    rationale: Tier 2 summarization/classification — mid-tier cloud model.
+  3:
+    model: claude-sonnet        # highest available quality. Alt: gpt-4o (when OpenAI enabled)
+    rationale: Tier 3 reasoning/creative/judgment — best model in the active set.
