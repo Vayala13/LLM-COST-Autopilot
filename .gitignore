@@ -5,3 +5,6 @@ __pycache__/
 
 # Generated feature matrix — regenerate with `python -m scripts.inspect_dataset`
 data/prompt_features.json
+
+# Runtime verifier failure log (Phase 3.2) — prompt hashes only, still local
+data/routing_failures.jsonl

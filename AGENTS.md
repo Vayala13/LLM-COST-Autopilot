@@ -9,8 +9,8 @@
 ## Current Status
 
 - **Phase:** 3 of 6 — Async Quality Verification Loop
-- **Last completed:** 3.1 quality thresholds. `configs/quality_thresholds.yaml` defines extraction (`field_coverage >= 1.0`), summarization (`llm_judge_score > 4/5`, judge `claude-sonnet`), classification (`label_agreement == 1.0`, reference `claude-sonnet` — GPT-4o unavailable while OpenAI disabled). Loader: `app/quality/thresholds.py` (`load_quality_thresholds`, `threshold_for`). Smoke: `python -m scripts.show_quality_thresholds`.
-- **Next action:** Phase 3.2 — async verifier (queue high-tier comparison after response; score agreement; log routing failures).
+- **Last completed:** 3.2 async verifier. `app/quality/verifier.py` scores extraction (`field_coverage` via caller `required_fields`), summarization (`llm_judge_score` via `judge_model` + `send_request`), classification (`label_agreement` vs `reference_model`). `passes_threshold` in `app/quality/thresholds.py`. Async enqueue: `app/quality/queue.py` (`enqueue_verification` / `drain`). Routing failures → structured log + `data/routing_failures.jsonl` (prompt hashed). Smoke: `python -m scripts.smoke_verifier`.
+- **Next action:** Phase 3.3 — auto-escalation on caught routing failure (re-run higher-tier; log cost delta / quality gap).
 - **Blockers:** None. OpenAI disabled in `.env` (invalid key, 401) — not required; GPT pricing stays in registry for the Phase 4.3 "vs GPT-4o" cost math. Classification/summarization judge uses `claude-sonnet` until OpenAI is enabled.
 - **Last updated:** 2026-08-01
 
@@ -70,7 +70,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 ### Phase 3: Async Quality Verification Loop (Day 6–9)
 
 - [x] **3.1 Quality thresholds per use case** — Define "good enough" per request type. Extraction: `field_coverage >= 1.0`. Summarization: LLM-as-judge score >4/5 (`claude-sonnet` judge). Classification: label agreement with high-tier reference (`claude-sonnet`; plan named GPT-4o, OpenAI disabled). → `configs/quality_thresholds.yaml`; loader `app/quality/thresholds.py`; smoke `python -m scripts.show_quality_thresholds`.
-- [ ] **3.2 Async verifier** — After the response returns to the user, queue an async job that sends the same prompt to the highest-tier model and compares outputs. Score agreement. If the cheap model diverges significantly, log a routing failure.
+- [x] **3.2 Async verifier** — After the response returns to the user, queue an async job that sends the same prompt to the highest-tier model and compares outputs. Score agreement. If the cheap model diverges significantly, log a routing failure. → `app/quality/verifier.py` + `app/quality/queue.py`; smoke `python -m scripts.smoke_verifier`.
 - [ ] **3.3 Auto-escalation** — On a caught failure, automatically re-run with the higher-tier model and return the better result (if latency permits). Log the escalation: original model, escalated model, cost delta, quality gap that triggered it.
 - [ ] **3.4 Feedback to classifier** — Every routing failure becomes a new training example. Build a simple loop that retrains the classifier weekly using accumulated failure data. This is the flywheel that makes the system smarter over time.
 
@@ -99,6 +99,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 
 | Date | Phase/Step | What happened | Next |
 |---|---|---|---|
+| 2026-08-01 | 3.2 | Added async quality verifier: `app/quality/verifier.py` (`verify`, field_coverage / llm_judge_score / label_agreement scoring via unified `send_request`), `passes_threshold` in `thresholds.py`, in-process asyncio queue `app/quality/queue.py` (`enqueue_verification`, `drain`). Routing failures logged (structured warning + JSONL under `data/routing_failures.jsonl` with prompt hash only). Smoke `scripts/smoke_verifier.py` (mocked offline; optional `--live`). | Phase 3.3 (auto-escalation) |
 | 2026-08-01 | 3.1 | Added `configs/quality_thresholds.yaml` (extraction field_coverage >= 1.0; summarization llm_judge_score > 4/5 with judge claude-sonnet; classification label_agreement == 1.0 with reference claude-sonnet — GPT-4o unavailable while OpenAI disabled). Implemented `app/quality/thresholds.py` (`load_quality_thresholds`, `threshold_for`) validating required use cases, comparison ops, and registry keys. Smoke script `scripts/show_quality_thresholds.py`. | Phase 3.2 (async verifier) |
 | 2026-07-31 | 2.4 | Added `configs/routing_map.yaml` (Tier 1 → llama-local, Tier 2 → gemini-flash, Tier 3 → claude-sonnet). Implemented `app/router/map.py` (`load_routing_map`, `model_for_tier`, `route_prompt`) validating registry keys on load. Smoke script `scripts/show_routing.py`. Phase 2 complete. | Phase 3.1 (quality thresholds) |
 | 2026-07-31 | 2.3 | Trained scikit-learn classifiers on 11 features / 201 prompts. Stratified 75/25 split. Logistic regression and random forest both 88.2% held-out accuracy (target >80%). Saved winner (logistic regression) to `models/complexity_classifier.joblib`, metrics to `data/classifier_metrics.json`. Added `app/classifier/model.py` (`load_classifier`, `predict_tier`) and `scripts/train_classifier.py`. Pinned scikit-learn/numpy/joblib in requirements. | Phase 2.4 (routing map YAML) |
