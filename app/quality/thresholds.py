@@ -45,7 +45,11 @@ def load_quality_thresholds(
     thresholds_path = Path(path) if path else DEFAULT_THRESHOLDS_PATH
     # Only load project config paths in production callers — path is unconstrained
     # for local smoke/tests; do not pass untrusted user paths here.
-    data = yaml.safe_load(thresholds_path.read_text()) or {}
+    data = yaml.safe_load(thresholds_path.read_text(encoding="utf-8"))
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        raise ValueError("quality_thresholds.yaml: top level must be a mapping")
     use_cases = data.get("use_cases") or {}
     if not isinstance(use_cases, dict):
         raise ValueError("quality_thresholds.yaml: 'use_cases' must be a mapping")
@@ -57,7 +61,7 @@ def load_quality_thresholds(
                 f"quality_thresholds use_case {use_case!r} must be a mapping"
             )
         try:
-            metric = entry["metric"]
+            metric = str(entry["metric"])
             threshold = float(entry["threshold"])
             comparison = entry["comparison"]
         except (KeyError, TypeError, ValueError) as exc:
@@ -74,6 +78,16 @@ def load_quality_thresholds(
 
         judge_model = entry.get("judge_model")
         reference_model = entry.get("reference_model")
+        if metric == "llm_judge_score" and not judge_model:
+            raise ValueError(
+                f"quality_thresholds use_case {use_case!r}: "
+                f"metric llm_judge_score requires judge_model"
+            )
+        if metric == "label_agreement" and not reference_model:
+            raise ValueError(
+                f"quality_thresholds use_case {use_case!r}: "
+                f"metric label_agreement requires reference_model"
+            )
         for model_key in (judge_model, reference_model):
             if model_key is not None and model_key not in MODEL_REGISTRY:
                 raise ValueError(
@@ -89,6 +103,11 @@ def load_quality_thresholds(
                     f"quality_thresholds use_case {use_case!r}: "
                     f"scale_max must be > 0, got {scale_max}"
                 )
+            if threshold > scale_max:
+                raise ValueError(
+                    f"quality_thresholds use_case {use_case!r}: "
+                    f"threshold {threshold} exceeds scale_max {scale_max}"
+                )
 
         notes = entry.get("notes") or ""
         if isinstance(notes, str):
@@ -98,12 +117,14 @@ def load_quality_thresholds(
 
         resolved[str(use_case)] = QualityThreshold(
             use_case=str(use_case),
-            metric=str(metric),
+            metric=metric,
             threshold=threshold,
             comparison=str(comparison),
             notes=notes,
-            judge_model=judge_model,
-            reference_model=reference_model,
+            judge_model=str(judge_model) if judge_model is not None else None,
+            reference_model=(
+                str(reference_model) if reference_model is not None else None
+            ),
             scale_max=scale_max,
         )
 
