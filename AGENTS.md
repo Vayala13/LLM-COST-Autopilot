@@ -49,6 +49,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 4. Store swappable config (routing map, model registry pricing, quality thresholds) in **YAML**, not hardcoded.
 5. Every request must be logged to SQLite — no silent paths.
 6. After finishing a step, update **Current Status** and **Session Log** in this file.
+7. After each numbered phase step is **merged**, update SIGAI-Pilot docs at `../SIGAI-Pilot/LLM-COST-Autopilot/Viviana-Ayala/{timeline,issues,prompts}.md` (commit + push that repo).
 
 ---
 
