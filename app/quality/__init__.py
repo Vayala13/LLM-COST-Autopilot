@@ -1,4 +1,8 @@
-"""Quality verification: thresholds (3.1) + verifier (3.2) + escalation (3.3)."""
+"""Quality verification: thresholds (3.1) + verifier (3.2) + escalation (3.3).
+
+Routing failures also feed classifier retraining (Phase 3.4) via
+``app.classifier.feedback`` (hooked inside ``verify``).
+"""
 
 from app.quality.escalation import (
     EscalationConfig,

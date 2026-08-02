@@ -149,12 +149,18 @@ def verify(
     send_request_fn: SendRequestFn | None = None,
     thresholds_path: str | None = None,
     failure_log_path: Path | str | None = None,
+    feedback_path: Path | str | None = None,
+    record_feedback: bool = True,
 ) -> VerificationResult:
     """Score agreement for a routed response against the use-case threshold.
 
     For ``summarization`` / ``classification``, calls the configured
     judge/reference model via ``send_request``. For ``extraction``, only
     local field-coverage scoring runs (no API call).
+
+    On ``routing_failure``, also records a classifier feedback example
+    (Phase 3.4) while the prompt is still in memory — failure JSONL stays
+    hash-only; feedback JSONL holds the labeled prompt (gitignored).
     """
     send = send_request_fn or send_request
     cfg = threshold_for(use_case, path=thresholds_path)
@@ -216,8 +222,43 @@ def verify(
 
     if result.routing_failure:
         _log_routing_failure(result, failure_log_path)
+        if record_feedback:
+            _record_classifier_feedback(
+                prompt,
+                routed_model=routed_model,
+                use_case=result.use_case,
+                prompt_hash=p_hash,
+                feedback_path=feedback_path,
+            )
 
     return result
+
+
+def _record_classifier_feedback(
+    prompt: str,
+    *,
+    routed_model: str,
+    use_case: str,
+    prompt_hash: str,
+    feedback_path: Path | str | None,
+) -> None:
+    """Best-effort Phase 3.4 feedback write; never raises to callers."""
+    # Local import keeps verifier free of a hard classifier dependency cycle.
+    try:
+        from app.classifier.feedback import record_routing_failure_example
+    except ImportError as exc:
+        logger.error("classifier feedback import failed: %s", exc)
+        return
+    try:
+        record_routing_failure_example(
+            prompt,
+            routed_model=routed_model,
+            use_case=use_case,
+            prompt_hash=prompt_hash,
+            feedback_path=feedback_path,
+        )
+    except Exception as exc:  # noqa: BLE001 — feedback must not break verify
+        logger.error("failed to record classifier feedback: %s", exc)
 
 
 def _log_routing_failure(
