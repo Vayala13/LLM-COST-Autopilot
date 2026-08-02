@@ -12,6 +12,27 @@ and asynchronously verifies that the routing decision was correct.
 PYTHONPATH=. python -m scripts.show_savings --demo
 ```
 
+**HTTP API (Phase 5.1):** `POST /v1/completions` — the **router** chooses the
+model; clients do not. Local/portfolio API is **unauthenticated** (do not
+expose publicly without real auth).
+
+```bash
+# Offline API smoke (TestClient + mocked provider; no live keys)
+PYTHONPATH=. python -m scripts.smoke_api
+
+# Run the API locally (localhost only; no --reload in production defaults)
+PYTHONPATH=. uvicorn app.api.main:app --host 127.0.0.1 --port 8000
+# Docs: http://127.0.0.1:8000/docs
+```
+
+Example body (plain prompt **or** OpenAI-style `messages` — not both):
+
+```bash
+curl -s http://127.0.0.1:8000/v1/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"Convert March 3, 2026 to YYYY-MM-DD."}'
+```
+
 See [`AGENTS.md`](./AGENTS.md) for the full 6-phase build plan and current status.
 
 ---
