@@ -61,17 +61,19 @@ def run_completion(
     body: CompletionRequest,
     *,
     db_path: str | Path | None = None,
+    routing_map_path: str | Path | None = None,
     send_request_fn: Any = None,
     enqueue_verification_fn: Any = None,
 ) -> CompletionResponse:
     """Execute the full route → provider → audit pipeline.
 
     ``send_request_fn`` / ``enqueue_verification_fn`` are injectable for
-    offline smoke tests (mocked; no live API keys).
+    offline smoke tests (mocked; no live API keys). ``routing_map_path`` is
+    operator/smoke injection only (must live under ``configs/``).
     """
     text = extract_prompt_text(prompt=body.prompt, messages=body.messages)
-    tier, model_key, model_cfg = route_prompt(text)
-    rationale = rationale_for_tier(tier)
+    tier, model_key, model_cfg = route_prompt(text, path=routing_map_path)
+    rationale = rationale_for_tier(tier, path=routing_map_path)
 
     send = send_request_fn or send_request
     # ProviderNotConfigured propagates to the FastAPI layer → HTTP 503.

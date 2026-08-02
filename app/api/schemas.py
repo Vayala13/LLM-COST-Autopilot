@@ -1,8 +1,11 @@
-"""Pydantic request/response models for POST /v1/completions.
+"""Pydantic request/response models for the FastAPI surface.
 
-Schema (documented): send either ``prompt`` (plain string) **or** ``messages``
-(OpenAI-style chat list). The client does **not** choose a model — the
-complexity router selects one. A ``model`` field is rejected (extra=forbid).
+Completions (Phase 5.1): send either ``prompt`` **or** ``messages``. The
+client does **not** choose a model — the complexity router selects one.
+A ``model`` field is rejected (extra=forbid).
+
+Config (Phase 5.2): models list, stats aggregates, routing-config get/put.
+PUT bodies are validated against ``MODEL_REGISTRY`` keys.
 
 Auth: this portfolio API is local/unauthenticated for now. Do not invent
 insecure shared API keys; real auth lands later if needed.
@@ -10,9 +13,11 @@ insecure shared API keys; real auth lands later if needed.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.providers.registry import MODEL_REGISTRY
 
 
 class ChatMessage(BaseModel):
@@ -133,3 +138,148 @@ class CompletionResponse(BaseModel):
     output_tokens: int = Field(ge=0)
     request_id: int = Field(description="SQLite audit row id (prompt_hash only in DB).")
     verification_enqueued: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Phase 5.2 — config endpoints
+# ---------------------------------------------------------------------------
+
+
+class ModelInfo(BaseModel):
+    """One entry from MODEL_REGISTRY (no secrets)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    key: str = Field(description="Internal registry key used in routing_map.yaml.")
+    provider: str
+    model_id: str
+    cost_per_input_token: float = Field(ge=0)
+    cost_per_output_token: float = Field(ge=0)
+    avg_latency_s: float = Field(ge=0)
+    quality_tier: Literal["high", "medium", "low"]
+
+
+class ModelsResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    models: list[ModelInfo]
+
+
+class StatsResponse(BaseModel):
+    """Cost savings aggregates — never raw prompts."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    request_count: int = Field(ge=0)
+    actual_cost_usd: float
+    gpt4o_cost_usd: float = Field(ge=0)
+    savings_usd: float
+    savings_pct: float
+    cost_reduction_pct: float = Field(
+        description="Portfolio money-shot: % reduction vs all GPT-4o."
+    )
+    escalation_count: int = Field(ge=0)
+    escalation_rate: float = Field(ge=0)
+    scored_count: int = Field(ge=0)
+    mean_quality_score: float | None = None
+    baseline_label: str
+    empty: bool = Field(description="True when the audit DB has zero requests.")
+    counterfactual_note: str
+
+
+class RoutingTierEntry(BaseModel):
+    """One tier mapping: registry model key + optional rationale."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model: str = Field(
+        ...,
+        min_length=1,
+        max_length=64,
+        description="MODEL_REGISTRY key (not a provider SDK model id).",
+    )
+    rationale: str | None = Field(default=None, max_length=500)
+
+    @field_validator("model")
+    @classmethod
+    def _model_in_registry(cls, v: str) -> str:
+        key = v.strip()
+        if key not in MODEL_REGISTRY:
+            raise ValueError(
+                f"model {key!r} not in MODEL_REGISTRY; "
+                f"known: {sorted(MODEL_REGISTRY)}"
+            )
+        return key
+
+    @field_validator("rationale")
+    @classmethod
+    def _strip_rationale(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        text = v.strip()
+        return text or None
+
+
+class RoutingConfigResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version: int = 1
+    routing: dict[str, RoutingTierEntry] = Field(
+        description='Keys are tier strings "1", "2", "3".'
+    )
+
+
+class RoutingConfigUpdate(BaseModel):
+    """Body for ``PUT /v1/routing-config``.
+
+    Shape::
+
+        {"routing": {"1": "llama-local", "2": "gemini-flash", "3": "claude-sonnet"}}
+
+    or with optional rationales::
+
+        {"routing": {"1": {"model": "claude-haiku", "rationale": "..."}}}
+
+    Tiers 1/2/3 are required. Model keys must exist in ``MODEL_REGISTRY``.
+    Extra fields forbidden. Clients cannot supply a write path.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    routing: dict[str, Any] = Field(
+        ...,
+        description='Map of tier "1"|"2"|"3" → registry key or {model, rationale}.',
+    )
+
+    @model_validator(mode="after")
+    def _validate_routing(self) -> RoutingConfigUpdate:
+        if set(self.routing) != {"1", "2", "3"}:
+            raise ValueError('routing must define exactly tiers "1", "2", and "3"')
+        normalized: dict[str, RoutingTierEntry] = {}
+        for tier_key, raw in self.routing.items():
+            if isinstance(raw, str):
+                entry = RoutingTierEntry(model=raw)
+            elif isinstance(raw, dict):
+                entry = RoutingTierEntry.model_validate(raw)
+            elif isinstance(raw, RoutingTierEntry):
+                entry = raw
+            else:
+                raise ValueError(
+                    f"routing[{tier_key!r}] must be a model key string or object"
+                )
+            normalized[tier_key] = entry
+        # Store normalized entries for handlers.
+        object.__setattr__(self, "routing", normalized)
+        return self
+
+    def to_mapping(self) -> tuple[dict[int, str], dict[int, str]]:
+        """Return ({tier: model_key}, {tier: rationale}) for tiers with rationale."""
+        mapping: dict[int, str] = {}
+        rationales: dict[int, str] = {}
+        for tier_key, entry in self.routing.items():
+            assert isinstance(entry, RoutingTierEntry)
+            tier = int(tier_key)
+            mapping[tier] = entry.model
+            if entry.rationale:
+                rationales[tier] = entry.rationale
+        return mapping, rationales

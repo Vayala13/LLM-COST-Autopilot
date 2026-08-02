@@ -12,9 +12,19 @@ and asynchronously verifies that the routing decision was correct.
 PYTHONPATH=. python -m scripts.show_savings --demo
 ```
 
-**HTTP API (Phase 5.1):** `POST /v1/completions` — the **router** chooses the
-model; clients do not. Local/portfolio API is **unauthenticated** (do not
-expose publicly without real auth).
+**HTTP API (Phase 5.1–5.2):** Local/portfolio API is **unauthenticated** (do not
+expose publicly without real auth). No wildcard CORS with credentials.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/v1/completions` | Router chooses the model; clients do not |
+| `GET` | `/v1/models` | Registry models + costs (no secrets) |
+| `GET` | `/v1/stats` | Cost savings aggregates (no raw prompts) |
+| `GET`/`PUT` | `/v1/routing-config` | Read/update tier→model map (`configs/routing_map.yaml`) |
+
+`PUT /v1/routing-config` writes only to the project routing YAML (clients cannot
+pass a file path). Disable writes in non-local deploys with
+`ALLOW_ROUTING_CONFIG_WRITE=0` — that flag is **not** authentication.
 
 ```bash
 # Offline API smoke (TestClient + mocked provider; no live keys)
@@ -25,12 +35,20 @@ PYTHONPATH=. uvicorn app.api.main:app --host 127.0.0.1 --port 8000
 # Docs: http://127.0.0.1:8000/docs
 ```
 
-Example body (plain prompt **or** OpenAI-style `messages` — not both):
+Example calls:
 
 ```bash
 curl -s http://127.0.0.1:8000/v1/completions \
   -H 'Content-Type: application/json' \
   -d '{"prompt":"Convert March 3, 2026 to YYYY-MM-DD."}'
+
+curl -s http://127.0.0.1:8000/v1/models
+curl -s http://127.0.0.1:8000/v1/stats
+curl -s http://127.0.0.1:8000/v1/routing-config
+
+curl -s -X PUT http://127.0.0.1:8000/v1/routing-config \
+  -H 'Content-Type: application/json' \
+  -d '{"routing":{"1":"claude-haiku","2":"gemini-flash","3":"claude-sonnet"}}'
 ```
 
 See [`AGENTS.md`](./AGENTS.md) for the full 6-phase build plan and current status.

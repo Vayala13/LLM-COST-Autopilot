@@ -9,9 +9,9 @@
 ## Current Status
 
 - **Phase:** 5 of 6 — Expose as an API
-- **Last completed:** 5.1 FastAPI `POST /v1/completions`. Router chooses model (client cannot force). Returns output + model/tier/rationale/cost/latency/tokens; audits via `log_completion` (prompt_hash). Optional async verify enqueue. Smoke `python -m scripts.smoke_api` (TestClient + mocks). Run: `uvicorn app.api.main:app --host 127.0.0.1 --port 8000`.
-- **Next action:** Phase 5.2 — Config endpoints (`GET /v1/models`, `GET /v1/stats`, `PUT /v1/routing-config`).
-- **Blockers:** None. OpenAI disabled in `.env` (invalid key, 401) — not required; GPT-4o pricing in registry powers the dashboard counterfactual. Classification/summarization judge uses `claude-sonnet` until OpenAI is enabled. Portfolio API is local/unauthenticated.
+- **Last completed:** 5.2 Config endpoints — `GET /v1/models`, `GET /v1/stats`, `GET|PUT /v1/routing-config`. Registry list + costs; savings aggregates via `compute_summary`; PUT validates against `MODEL_REGISTRY`, persists to `configs/routing_map.yaml` (rationale-preserving; `ALLOW_ROUTING_CONFIG_WRITE` gate). Smoke extended in `scripts/smoke_api.py`.
+- **Next action:** Phase 5.3 — Containerize & document (docker-compose API + worker + SQLite; README architecture + savings).
+- **Blockers:** None. OpenAI disabled in `.env` (invalid key, 401) — not required; GPT-4o pricing in registry powers the dashboard counterfactual. Classification/summarization judge uses `claude-sonnet` until OpenAI is enabled. Portfolio API is local/unauthenticated (`ALLOW_ROUTING_CONFIG_WRITE` defaults on; not auth).
 - **Last updated:** 2026-08-02
 
 > **Update rule:** Whenever a step is finished, change "Last completed", set "Next action" to the next unchecked box, and add a line to the Session Log.
@@ -84,7 +84,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 ### Phase 5: Expose as an API (Day 11–13)
 
 - [x] **5.1 FastAPI service** — Single `POST /v1/completions` accepting a standard chat completion request. The user does not choose the model — the router does. Return the response with metadata: which model was selected and why. → `app/api/main.py` + schemas/completions; smoke `python -m scripts.smoke_api`.
-- [ ] **5.2 Config endpoints** — `GET /v1/models` (available models + costs), `GET /v1/stats` (cost savings summary), `PUT /v1/routing-config` (update tier→model mappings without redeploying).
+- [x] **5.2 Config endpoints** — `GET /v1/models` (available models + costs), `GET /v1/stats` (cost savings summary), `GET|PUT /v1/routing-config` (update tier→model mappings without redeploying). → `app/api/config_routes.py` + schemas; `save_routing_map` in `app/router/map.py`; smoke in `scripts/smoke_api.py`.
 - [ ] **5.3 Containerize & document** — docker-compose with the API service, a background worker for async verification, and the SQLite DB. README with architecture diagram, setup instructions, and the cost savings number front and center.
 
 ### Phase 6: Polish for Portfolio (Day 13–14)
@@ -100,6 +100,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 
 | Date | Phase/Step | What happened | Next |
 |---|---|---|---|
+| 2026-08-02 | 5.2 | Config endpoints: `GET /v1/models`, `GET /v1/stats`, `GET|PUT /v1/routing-config` in `app/api/config_routes.py` + schemas. Stats via `compute_summary` (aggregates only). PUT validates registry keys, writes only under `configs/` (`save_routing_map`; preserves rationales); `ALLOW_ROUTING_CONFIG_WRITE` gate (default on; not auth). Smoke extended in `scripts/smoke_api.py`. Unauthenticated portfolio API documented. | Phase 5.3 (containerize & document) |
 | 2026-08-02 | 5.1 | FastAPI `POST /v1/completions`: `app/api/{main,schemas,completions}.py`. Schema = `prompt` **or** OpenAI-ish `messages` (extra=forbid; no client model). Pipeline: `route_prompt` → `send_request` → `log_completion` → optional async `enqueue_verification`. Response includes model/tier/rationale/cost/latency/tokens. Pinned `fastapi==0.141.1`, `uvicorn==0.52.1`, `httpx==0.28.1`. Smoke `scripts/smoke_api.py` (TestClient + mocks). README uvicorn localhost. Escalation left as TODO hook (async verify; don't block hot path). | Phase 5.2 (config endpoints) |
 | 2026-08-02 | 4.3 | Money-shot metric: `cost_reduction_pct` + `PORTFOLIO_BASELINE_LABEL` ("vs all GPT-4o"); `format_portfolio_headline` / `load_portfolio_headline`. Dashboard hero (large % + $ saved). CLI `scripts/show_savings.py` (`--demo` temp DB). README + light portfolio log note. Smoke asserts headline helpers. Phase 4 complete. | Phase 5.1 (FastAPI completions) |
 | 2026-08-02 | 4.2 | Cost dashboard: `app/metrics/cost.py` (actual vs GPT-4o via registry + tokens; savings $/%; cost by day/week; routing share; quality buckets; escalation rate by day; `seed_demo_requests`). Streamlit `dashboard/app.py` (savings callout + charts; empty-DB demo button; localhost bind note). Audit schema + nullable `input_tokens`/`output_tokens` (minimal migration). Pinned `streamlit==1.60.0`. Smoke `scripts/smoke_metrics.py` (offline temp DB). | Phase 4.3 (money-shot metric polish) |
