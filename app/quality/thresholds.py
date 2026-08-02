@@ -7,6 +7,7 @@ validated on load when present.
 
 from __future__ import annotations
 
+import operator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +20,14 @@ DEFAULT_THRESHOLDS_PATH = _ROOT / "configs" / "quality_thresholds.yaml"
 
 REQUIRED_USE_CASES = frozenset({"extraction", "summarization", "classification"})
 ALLOWED_COMPARISONS = frozenset({">", ">=", "<", "<=", "=="})
+
+_OPS = {
+    ">": operator.gt,
+    ">=": operator.ge,
+    "<": operator.lt,
+    "<=": operator.le,
+    "==": operator.eq,
+}
 
 
 @dataclass(frozen=True)
@@ -146,3 +155,15 @@ def threshold_for(use_case: str, path: str | None = None) -> QualityThreshold:
             f"known: {sorted(thresholds)}"
         )
     return thresholds[use_case]
+
+
+def passes_threshold(score: float, threshold: QualityThreshold) -> bool:
+    """True when score satisfies the YAML comparison op vs threshold.threshold."""
+    try:
+        op = _OPS[threshold.comparison]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unknown comparison {threshold.comparison!r}; "
+            f"allowed: {sorted(ALLOWED_COMPARISONS)}"
+        ) from exc
+    return bool(op(score, threshold.threshold))
