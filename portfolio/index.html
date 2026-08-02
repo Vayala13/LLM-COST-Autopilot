@@ -339,18 +339,30 @@ const PROJECTS = [
   {
     id: "llm-cost-autopilot",
     name: "LLM Cost AutoPilot",
-    blurb: "An intelligent routing layer in front of multiple LLM providers. It scores each request's complexity, routes it to the cheapest model that can handle it well, and asynchronously verifies the decision was correct. Goal: cut LLM API costs by X% while keeping Y% quality parity.",
+    blurb: "An intelligent routing layer in front of multiple LLM providers. It scores each request's complexity, routes it to the cheapest model that can handle it well, and asynchronously verifies the decision was correct. Headline metric: cost reduction % vs all GPT-4o (`python -m scripts.show_savings --demo`).",
     stack: ["Python", "Anthropic", "OpenAI", "Ollama", "FastAPI", "scikit-learn", "SQLite", "Streamlit", "Docker"],
     repo: "https://github.com/you/llm-cost-autopilot",
     phases: [
       { name: "Unified Model Interface", status: "done" },
       { name: "Complexity Classifier", status: "done" },
-      { name: "Async Quality Verification", status: "planned" },
-      { name: "Logging & Cost Dashboard", status: "planned" },
+      { name: "Async Quality Verification", status: "done" },
+      { name: "Logging & Cost Dashboard", status: "done" },
       { name: "Expose as an API", status: "planned" },
       { name: "Portfolio Polish", status: "planned" }
     ],
     log: [
+      {
+        date: "AUG 02 2026",
+        kicker: "tried",
+        title: "Phase 4.3 — money-shot cost reduction % vs all GPT-4o",
+        body: `<p>Made the portfolio headline unmistakable: percent cost reduction versus sending every request to GPT-4o.</p>
+          <ul>
+            <li>Exposed <code>cost_reduction_pct</code> on the metrics summary (alias of savings %).</li>
+            <li>Dashboard hero is the large % + dollars saved + “vs all GPT-4o” baseline.</li>
+            <li>CLI: <code>PYTHONPATH=. python -m scripts.show_savings --demo</code> prints the number offline.</li>
+          </ul>
+          <p>Phase 4 (logging + cost dashboard) is complete. Next is the FastAPI completions endpoint.</p>`
+      },
       {
         date: "JUL 31 2026",
         kicker: "tried",

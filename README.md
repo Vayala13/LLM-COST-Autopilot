@@ -6,6 +6,12 @@ and asynchronously verifies that the routing decision was correct.
 
 **Goal:** "Reduced LLM API costs by X% while maintaining Y% quality parity."
 
+**Portfolio headline (Phase 4.3):** print the live cost-reduction % vs all GPT-4o:
+
+```bash
+PYTHONPATH=. python -m scripts.show_savings --demo
+```
+
 See [`AGENTS.md`](./AGENTS.md) for the full 6-phase build plan and current status.
 
 ---
@@ -51,17 +57,20 @@ Expected output: `key loaded, length 108`
 
 ---
 
-## Cost dashboard (Phase 4.2)
+## Cost dashboard & money-shot metric (Phase 4.2–4.3)
 
 ```bash
-# Offline metrics smoke (temp DB, no browser)
+# Offline metrics smoke (temp DB, no browser) — includes cost_reduction_pct checks
 PYTHONPATH=. python -m scripts.smoke_metrics
 
-# Local dashboard — bind to localhost only
+# Portfolio headline number (offline; --demo uses a temp DB)
+PYTHONPATH=. python -m scripts.show_savings --demo
+
+# Local dashboard — bind to localhost only (hero = cost reduction % vs all GPT-4o)
 streamlit run dashboard/app.py --server.address=127.0.0.1 --server.port=8501
 ```
 
-If `data/requests.db` is empty, use **Load demo data** in the sidebar for portfolio screenshots. Charts are aggregates only (no raw prompts).
+If `data/requests.db` is empty, use **Load demo data** in the sidebar for portfolio screenshots. Charts are aggregates only (no raw prompts). The dashboard hero and `show_savings` both surface `cost_reduction_pct` from `app/metrics/cost.py`.
 
 ---
 

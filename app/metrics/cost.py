@@ -1,4 +1,4 @@
-"""Phase 4.2 — aggregate cost / quality / escalation metrics from audit DB.
+"""Phase 4.2/4.3 — aggregate cost / quality / escalation metrics from audit DB.
 
 GPT-4o counterfactual (honest, documented)
 -----------------------------------------
@@ -14,6 +14,13 @@ fall back to a fixed typical-request size
 registry rates. That is an approximation — not reverse-engineered from the
 routed model's ``cost`` (which is $0 for ``llama-local`` and would understate
 savings). Demo seed rows always include token counts.
+
+Portfolio headline (Phase 4.3)
+------------------------------
+``DashboardSummary.cost_reduction_pct`` is the money-shot metric:
+percent cost reduction vs routing everything to GPT-4o
+(``PORTFOLIO_BASELINE_LABEL``). Same value as ``savings_pct``; the alias
+exists so portfolio / README / ``scripts.show_savings`` have one clear name.
 
 Security: aggregates only — never select or return raw prompt text. All SQL
 uses ``?`` parameter binds. Dashboard should bind Streamlit to localhost.
@@ -36,6 +43,9 @@ FALLBACK_OUTPUT_TOKENS = 250
 
 GPT4O_KEY = "gpt-4o"
 
+# Portfolio / dashboard baseline label for the money-shot %.
+PORTFOLIO_BASELINE_LABEL = "vs all GPT-4o"
+
 GPT4O_COUNTERFACTUAL_NOTE = (
     "Hypothetical GPT-4o cost uses MODEL_REGISTRY['gpt-4o'] list pricing on "
     "per-row input/output tokens when present; otherwise falls back to "
@@ -47,7 +57,11 @@ PeriodGrain = Literal["day", "week"]
 
 @dataclass(frozen=True)
 class DashboardSummary:
-    """Headline numbers for the cost dashboard."""
+    """Headline numbers for the cost dashboard.
+
+    ``cost_reduction_pct`` is the portfolio money-shot (alias of
+    ``savings_pct``): percent cheaper than sending every request to GPT-4o.
+    """
 
     request_count: int
     actual_cost_usd: float
@@ -61,6 +75,12 @@ class DashboardSummary:
     tokens_known_count: int
     tokens_fallback_count: int
     counterfactual_note: str
+    baseline_label: str = PORTFOLIO_BASELINE_LABEL
+
+    @property
+    def cost_reduction_pct(self) -> float:
+        """Portfolio headline: % cost reduction vs all-GPT-4o baseline."""
+        return self.savings_pct
 
 
 @dataclass(frozen=True)
@@ -186,7 +206,35 @@ def compute_summary(*, db_path: str | Path | None = None) -> DashboardSummary:
         tokens_known_count=tokens_known,
         tokens_fallback_count=tokens_fallback,
         counterfactual_note=GPT4O_COUNTERFACTUAL_NOTE,
+        baseline_label=PORTFOLIO_BASELINE_LABEL,
     )
+
+
+def format_portfolio_headline(summary: DashboardSummary) -> str:
+    """One-line portfolio money-shot for CLI / README copy."""
+    return (
+        f"Reduced LLM API costs by {summary.cost_reduction_pct:.1f}% "
+        f"{summary.baseline_label} "
+        f"(saved ${summary.savings_usd:,.4f}; "
+        f"actual ${summary.actual_cost_usd:,.4f} vs "
+        f"GPT-4o ${summary.gpt4o_cost_usd:,.4f}; "
+        f"n={summary.request_count})"
+    )
+
+
+def load_portfolio_headline(
+    *,
+    db_path: str | Path | None = None,
+    seed_if_empty: bool = False,
+) -> DashboardSummary:
+    """Return summary for the money-shot; optionally seed demo rows if empty.
+
+    Never reads or returns raw prompts — audit aggregates only.
+    """
+    init_db(db_path)
+    if seed_if_empty and count_requests(db_path=db_path) == 0:
+        seed_demo_requests(db_path=db_path)
+    return compute_summary(db_path=db_path)
 
 
 # Fixed SQL only — grain selects which constant query to run (no user input).
