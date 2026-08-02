@@ -48,6 +48,9 @@ logger = logging.getLogger(__name__)
 _ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_DB_PATH = _ROOT / "data" / "requests.db"
 
+# Process-local: skip retrain until feedback_prompts.jsonl grows.
+_last_retrain_feedback_count: int | None = None
+
 
 def _env_bool(name: str, default: bool = True) -> bool:
     raw = os.environ.get(name)
@@ -109,12 +112,25 @@ def maybe_retrain(
     min_feedback: int = 1,
     enabled: bool = True,
 ) -> str:
-    """Run classifier retrain when feedback is present. Returns a short status."""
+    """Run classifier retrain when feedback grows past the last run.
+
+    Returns a short status string. Does not retrain on every tick once a
+    feedback file already exists — only when the row count increases
+    (or on the first successful run in this process).
+    """
+    global _last_retrain_feedback_count
+
     if not enabled:
         return "retrain_skipped_disabled"
     feedback = load_feedback(feedback_path)
-    if len(feedback) < min_feedback:
-        return f"retrain_skipped_need_{min_feedback}_have_{len(feedback)}"
+    n = len(feedback)
+    if n < min_feedback:
+        return f"retrain_skipped_need_{min_feedback}_have_{n}"
+    if (
+        _last_retrain_feedback_count is not None
+        and n <= _last_retrain_feedback_count
+    ):
+        return f"retrain_skipped_unchanged_{n}"
 
     # Import lazily so ``WORKER_RETRAIN=0`` paths stay cheap / offline.
     from scripts.retrain_from_feedback import retrain
@@ -122,6 +138,7 @@ def maybe_retrain(
     result = retrain(feedback_path=feedback_path, force=False)
     if result is None:
         return "retrain_noop"
+    _last_retrain_feedback_count = n
     if isinstance(result, dict) and result.get("dry_run"):
         return "retrain_dry_run"
     return "retrain_ok"
