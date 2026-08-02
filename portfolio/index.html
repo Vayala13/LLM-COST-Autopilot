@@ -339,18 +339,41 @@ const PROJECTS = [
   {
     id: "llm-cost-autopilot",
     name: "LLM Cost AutoPilot",
-    blurb: "An intelligent routing layer in front of multiple LLM providers. It scores each request's complexity, routes it to the cheapest model that can handle it well, and asynchronously verifies the decision was correct. Headline metric: cost reduction % vs all GPT-4o (`python -m scripts.show_savings --demo`).",
+    blurb: "Intelligent LLM routing: cheapest capable model per prompt, async quality verify + escalation, classifier feedback flywheel. Portfolio headline: reduced API costs by 30.6% vs all GPT-4o (offline load test, n=750). Case study: ../CASE_STUDY.md",
     stack: ["Python", "Anthropic", "OpenAI", "Ollama", "FastAPI", "scikit-learn", "SQLite", "Streamlit", "Docker"],
-    repo: "https://github.com/you/llm-cost-autopilot",
+    repo: "https://github.com/Vayala13/LLM-COST-Autopilot",
     phases: [
       { name: "Unified Model Interface", status: "done" },
       { name: "Complexity Classifier", status: "done" },
       { name: "Async Quality Verification", status: "done" },
       { name: "Logging & Cost Dashboard", status: "done" },
-      { name: "Expose as an API", status: "planned" },
-      { name: "Portfolio Polish", status: "planned" }
+      { name: "Expose as an API", status: "done" },
+      { name: "Portfolio Polish", status: "done" }
     ],
     log: [
+      {
+        date: "AUG 02 2026",
+        kicker: "tried",
+        title: "Phase 6.2 — case study: 30.6% cost cut vs all GPT-4o",
+        body: `<p>Wrote the portfolio case study that leads with the load-test headline and explains routing + the quality feedback loop.</p>
+          <ul>
+            <li>Headline: <strong>30.6%</strong> cheaper than all-GPT-4o (n=750 offline; see <code>reports/load_test_savings.md</code>).</li>
+            <li>Documented tier→model map, async verify / escalate, and classifier retrain flywheel.</li>
+            <li>Quality framing: escalation rate <code>3.2%</code> in the harness (~96.8% stayed on the cheap route).</li>
+            <li>Ship artifact: <code>CASE_STUDY.md</code> (linked from README).</li>
+          </ul>
+          <p>All six build phases are complete.</p>`
+      },
+      {
+        date: "AUG 02 2026",
+        kicker: "tried",
+        title: "Phase 6.1 — load test (n=750) → 30.6% vs GPT-4o",
+        body: `<p>Ran an offline load test through the real classifier + routing map with mocked provider costs from the registry.</p>
+          <ul>
+            <li>750 prompts → audit rows + <code>reports/load_test_savings.{json,md}</code> + dashboard PNG.</li>
+            <li>Routing mix: 56.7% llama-local, 28.7% gemini-flash, 14.7% claude-sonnet.</li>
+          </ul>`
+      },
       {
         date: "AUG 02 2026",
         kicker: "tried",
