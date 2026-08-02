@@ -7,10 +7,11 @@ Pipeline:
   4. ``log_completion`` (prompt_hash; never raw prompt / API keys)
   5. Optionally ``enqueue_verification`` (async, non-blocking)
 
-TODO (escalation hook): sync ``verify`` + ``escalate_if_needed`` on the hot
-path would add latency; keep verification async. A future worker (Phase 5.3)
-can call ``escalate_if_needed`` after background verify and update the audit
-row — do not block this response for escalation.
+Escalation / verify note (Phase 5.3): verification stays **in-process**
+(``enqueue_verification`` asyncio queue) so it does not block the response.
+The compose ``worker`` watches shared ``data/`` (retrain / JSONL) and does
+**not** drain that in-memory queue. Sync ``escalate_if_needed`` on the hot
+path is still deferred — do not block this response for escalation.
 """
 
 from __future__ import annotations

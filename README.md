@@ -1,19 +1,110 @@
 # LLM Cost AutoPilot
 
-An intelligent routing layer in front of multiple LLM providers. It scores each
-request's complexity, routes it to the cheapest model that can handle it well,
-and asynchronously verifies that the routing decision was correct.
+# Reduced LLM API costs by **36.7%** vs all GPT-4o
 
-**Goal:** "Reduced LLM API costs by X% while maintaining Y% quality parity."
-
-**Portfolio headline (Phase 4.3):** print the live cost-reduction % vs all GPT-4o:
+Demo aggregate (offline seed, `n=84`): saved **$0.1078**
+(actual $0.1862 vs GPT-4o $0.2940). Recompute anytime:
 
 ```bash
 PYTHONPATH=. python -m scripts.show_savings --demo
 ```
 
-**HTTP API (Phase 5.1–5.2):** Local/portfolio API is **unauthenticated** (do not
-expose publicly without real auth). No wildcard CORS with credentials.
+Dashboard hero (same metric): 
+
+```bash
+streamlit run dashboard/app.py --server.address=127.0.0.1 --server.port=8501
+```
+
+An intelligent routing layer in front of multiple LLM providers. It scores each
+request's complexity, routes it to the cheapest model that can handle it well,
+and asynchronously verifies that the routing decision was correct.
+
+![Architecture](./architecture-diagram.png)
+
+---
+
+## Architecture (honest)
+
+```
+Client ──► FastAPI (api) ──► classifier → routing map → provider
+                │                      │
+                │              log_completion → data/requests.db
+                │                      │
+                └─ in-process asyncio verify (same process)
+                         │
+                         └─ feedback / failure JSONL → data/
+
+         worker (separate container) ── watches data/ ──► retrain_from_feedback
+```
+
+**Verification queue:** `enqueue_verification` is an **in-memory asyncio**
+queue inside the API process. It does **not** cross containers. The compose
+`worker` shares the `./data` volume (SQLite + JSONL) and runs the classifier
+retrain flywheel — it does not drain the API's asyncio queue.
+
+**SQLite:** `data/requests.db` lives on the shared volume (gitignored).
+
+**Auth:** Local/portfolio API is **unauthenticated**. Do not expose publicly
+without real auth. No wildcard CORS with credentials.
+
+---
+
+## Quick start — Docker Compose (Phase 5.3)
+
+```bash
+# 1. Copy env template (no secrets in the image; fill keys as needed)
+cp .env.example .env
+
+# 2. Build + run API + worker (shared ./data volume for SQLite/JSONL)
+docker compose up --build
+
+# 3. Health + savings
+curl -s http://127.0.0.1:8000/healthz
+curl -s http://127.0.0.1:8000/v1/stats
+```
+
+Compose publishes the API on **127.0.0.1:8000** only. Containers run as
+non-root, with `no-new-privileges`, and **without** `privileged: true`.
+Set `ALLOW_ROUTING_CONFIG_WRITE=0` outside local demos (that flag is **not** auth).
+
+| Service | Role |
+|---|---|
+| `api` | `uvicorn app.api.main:app` — completions + config endpoints; in-process verify |
+| `worker` | `python -m app.worker.main` — data/ watch + optional retrain |
+
+Validate the compose file (no daemon required for `config`):
+
+```bash
+docker compose config
+```
+
+Offline worker smoke (no Docker):
+
+```bash
+PYTHONPATH=. python -m scripts.smoke_worker
+```
+
+---
+
+## Quick start — local venv
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # then add real keys if you want live providers
+
+# Offline API smoke (TestClient + mocked provider)
+PYTHONPATH=. python -m scripts.smoke_api
+
+# Run API on localhost
+PYTHONPATH=. uvicorn app.api.main:app --host 127.0.0.1 --port 8000
+# Docs: http://127.0.0.1:8000/docs
+```
+
+---
+
+## HTTP API
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -21,21 +112,6 @@ expose publicly without real auth). No wildcard CORS with credentials.
 | `GET` | `/v1/models` | Registry models + costs (no secrets) |
 | `GET` | `/v1/stats` | Cost savings aggregates (no raw prompts) |
 | `GET`/`PUT` | `/v1/routing-config` | Read/update tier→model map (`configs/routing_map.yaml`) |
-
-`PUT /v1/routing-config` writes only to the project routing YAML (clients cannot
-pass a file path). Disable writes in non-local deploys with
-`ALLOW_ROUTING_CONFIG_WRITE=0` — that flag is **not** authentication.
-
-```bash
-# Offline API smoke (TestClient + mocked provider; no live keys)
-PYTHONPATH=. python -m scripts.smoke_api
-
-# Run the API locally (localhost only; no --reload in production defaults)
-PYTHONPATH=. uvicorn app.api.main:app --host 127.0.0.1 --port 8000
-# Docs: http://127.0.0.1:8000/docs
-```
-
-Example calls:
 
 ```bash
 curl -s http://127.0.0.1:8000/v1/completions \
@@ -45,90 +121,46 @@ curl -s http://127.0.0.1:8000/v1/completions \
 curl -s http://127.0.0.1:8000/v1/models
 curl -s http://127.0.0.1:8000/v1/stats
 curl -s http://127.0.0.1:8000/v1/routing-config
-
-curl -s -X PUT http://127.0.0.1:8000/v1/routing-config \
-  -H 'Content-Type: application/json' \
-  -d '{"routing":{"1":"claude-haiku","2":"gemini-flash","3":"claude-sonnet"}}'
 ```
+
+---
+
+## Cost dashboard
+
+```bash
+PYTHONPATH=. python -m scripts.smoke_metrics
+PYTHONPATH=. python -m scripts.show_savings --demo
+streamlit run dashboard/app.py --server.address=127.0.0.1 --server.port=8501
+```
+
+If `data/requests.db` is empty, use **Load demo data** in the sidebar.
+Charts are aggregates only (no raw prompts).
+
+---
+
+## Project layout
+
+| Path | Purpose |
+|---|---|
+| `app/api/` | FastAPI completions + config endpoints |
+| `app/worker/` | Compose background worker (data/ watch + retrain) |
+| `app/providers/` | Unified `send_request` + model registry |
+| `app/classifier/` | Features + complexity model + feedback flywheel |
+| `app/quality/` | Thresholds, in-process verify queue, escalation |
+| `app/audit/` | SQLite request audit trail |
+| `app/metrics/` | Savings aggregates (`cost_reduction_pct`) |
+| `configs/` | YAML: tiers, routing map, thresholds, escalation |
+| `Dockerfile` / `docker-compose.yml` | API + worker + shared `data/` volume |
+| `.env.example` | Env template — copy to `.env` (gitignored) |
 
 See [`AGENTS.md`](./AGENTS.md) for the full 6-phase build plan and current status.
 
 ---
 
-## What's set up so far
-
-This is the **foundation** — secrets, config, and a working Python environment.
-No routing or model logic yet; that starts in Phase 1 (see `AGENTS.md`).
-
-| File | Purpose |
-|---|---|
-| `.env` | Holds real secrets (your `ANTHROPIC_API_KEY`). **Git-ignored — never committed.** |
-| `.gitignore` | Keeps `.env`, `.venv/`, and `__pycache__/` out of git. |
-| `config.py` | Loads `.env` and exposes `ANTHROPIC_API_KEY` to the rest of the code. |
-| `requirements.txt` | Python dependencies (currently just `python-dotenv`). |
-| `.venv/` | Isolated Python environment so installs don't touch system Python. |
-
----
-
-## Setup
-
-```bash
-# 1. Create the virtual environment (once)
-python3 -m venv .venv
-
-# 2. Activate it (every new terminal)
-source .venv/bin/activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Add your real key to .env
-#    ANTHROPIC_API_KEY=sk-ant-...
-```
-
-## Verify it works
-
-```bash
-python -c "import config; print('key loaded, length', len(config.ANTHROPIC_API_KEY))"
-```
-
-Expected output: `key loaded, length 108`
-
----
-
-## Cost dashboard & money-shot metric (Phase 4.2–4.3)
-
-```bash
-# Offline metrics smoke (temp DB, no browser) — includes cost_reduction_pct checks
-PYTHONPATH=. python -m scripts.smoke_metrics
-
-# Portfolio headline number (offline; --demo uses a temp DB)
-PYTHONPATH=. python -m scripts.show_savings --demo
-
-# Local dashboard — bind to localhost only (hero = cost reduction % vs all GPT-4o)
-streamlit run dashboard/app.py --server.address=127.0.0.1 --server.port=8501
-```
-
-If `data/requests.db` is empty, use **Load demo data** in the sidebar for portfolio screenshots. Charts are aggregates only (no raw prompts). The dashboard hero and `show_savings` both surface `cost_reduction_pct` from `app/metrics/cost.py`.
-
----
-
-## How config loading works
-
-`config.py` reads the `.env` file at import time, so any module can do:
-
-```python
-import config
-client = SomeClient(api_key=config.ANTHROPIC_API_KEY)
-```
-
-The key lives only in `.env` (git-ignored), never hardcoded in source.
-
----
-
 ## Notes
 
-- **Python version:** the `.venv` uses your system Python (3.14). `AGENTS.md`
-  targets 3.11+, so this is fine.
-- **Secret hygiene:** if the key is ever exposed (shared repo, screen share),
-  rotate it in the [Anthropic console](https://console.anthropic.com/).
+- **Python:** 3.11+ (Docker image uses 3.11-slim). Local `.venv` may be newer.
+- **Secret hygiene:** keys only in `.env` (gitignored). Rotate if exposed.
+- **Providers are optional:** missing `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` /
+  `GEMINI_API_KEY` → that provider skips or returns HTTP 503 on live calls.
+  Offline smokes never need keys.

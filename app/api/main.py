@@ -65,7 +65,7 @@ def create_app(
             "for registry, savings aggregates, and live routing map updates. "
             "Local/portfolio API is unauthenticated."
         ),
-        version="0.5.2",
+        version="0.5.3",
         docs_url="/docs",
         redoc_url="/redoc",
         # debug defaults False — do not enable reload here (CLI flag for local only).

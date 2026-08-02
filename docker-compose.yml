@@ -1,0 +1,91 @@
+# LLM Cost AutoPilot — Phase 5.3 compose stack
+#
+# Services:
+#   api     — FastAPI (uvicorn). In-process asyncio verification.
+#   worker  — Background loop on the shared data/ volume (retrain / JSONL watch).
+#
+# Honest queue design (read this):
+#   ``app.quality.queue.enqueue_verification`` is an *in-memory* asyncio queue.
+#   It does NOT cross processes or containers. Verification therefore runs inside
+#   the API process. The worker shares ``./data`` (SQLite + JSONL) and handles
+#   classifier retrain from ``feedback_prompts.jsonl`` plus status of failure
+#   logs — it does not drain the API's asyncio queue.
+#
+# Security:
+#   - No privileged containers.
+#   - Secrets via env_file (.env) — never baked into the image. See .env.example.
+#   - Portfolio API is unauthenticated. Bind is 127.0.0.1 by default; do not
+#     expose publicly without real auth. Set ALLOW_ROUTING_CONFIG_WRITE=0 outside
+#     local demos (that flag is not authentication).
+
+services:
+  api:
+    build: .
+    image: llm-cost-autopilot:local
+    container_name: lca-api
+    command:
+      [
+        "uvicorn",
+        "app.api.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+      ]
+    ports:
+      # Localhost-only publish — portfolio / local demos. Change deliberately
+      # if you need LAN access (still unauthenticated).
+      - "127.0.0.1:8000:8000"
+    # Compose interpolates vars from a host `.env` (see `.env.example`).
+    # Do not bake secrets into the image.
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ALLOW_ROUTING_CONFIG_WRITE: ${ALLOW_ROUTING_CONFIG_WRITE:-1}
+    volumes:
+      # Shared SQLite + JSONL audit / feedback trail with the worker.
+      - ./data:/app/data
+      # Persist PUT /v1/routing-config edits to host configs/.
+      - ./configs:/app/configs
+    # No privileged / no cap_add. Non-root USER is set in the Dockerfile.
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  worker:
+    build: .
+    image: llm-cost-autopilot:local
+    container_name: lca-worker
+    command: ["python", "-m", "app.worker.main"]
+    environment:
+      WORKER_INTERVAL_S: ${WORKER_INTERVAL_S:-300}
+      WORKER_RETRAIN: ${WORKER_RETRAIN:-1}
+      WORKER_MIN_FEEDBACK: ${WORKER_MIN_FEEDBACK:-1}
+      # Keys unused for default retrain path; present for future verify-from-disk.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    volumes:
+      - ./data:/app/data
+      - ./configs:/app/configs
+      # Retrain may rewrite the joblib classifier on the shared volume.
+      - ./models:/app/models
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
