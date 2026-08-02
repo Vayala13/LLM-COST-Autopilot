@@ -18,6 +18,18 @@
 
 ---
 
+## Cursor Cloud specific instructions
+
+Durable notes for running this project on a Cursor Cloud VM. Standard setup lives in `README.md`; dependency install is handled automatically by the startup update script (creates `.venv`, installs `requirements.txt`).
+
+- **Run everything through the venv.** System Python is PEP 668 externally-managed, so a `.venv` is used. Invoke scripts as `.venv/bin/python -m scripts.<name>` (or `source .venv/bin/activate` first). `python3-venv`/`python3-pip` are provisioned at the system level (needed for venv creation); they are intentionally NOT in the update script.
+- **No test framework or linter is configured.** The `scripts/*.py` smoke scripts are the functional checks; use `.venv/bin/python -m compileall app scripts config.py` as a byte-compile sanity check. Don't assume `pytest`/`ruff` exist.
+- **Providers are optional and key-gated.** `config.py` reads keys from the environment (or a git-ignored `.env`) at import. Without `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/`GEMINI_API_KEY`, `scripts.baseline_test` and any live call skip that provider gracefully — the offline pipeline (features → classifier → routing → thresholds) still runs fully with zero secrets.
+- **Local Tier-1 model via Ollama (no API key).** `llama-local` (`llama3.2`) is served by Ollama. The VM has no systemd, so start the daemon manually and keep it running (e.g. `ollama serve` in a background/tmux session), then `ollama pull llama3.2` once. Ollama itself is a system-level install, not part of the update script. With it running, `route_prompt` + `send_request` do a real end-to-end LLM call.
+- **Regenerated artifacts are tracked.** `scripts.train_classifier` rewrites `models/complexity_classifier.joblib` + `data/classifier_metrics.json` (embed timestamps) and `scripts.baseline_test` rewrites `data/baseline_results.json`. Training is deterministic (`random_state=42`); avoid committing these purely-timestamp/limited-run diffs unless the change is intentional. `data/prompt_features.json` is git-ignored (regenerate with `scripts.inspect_dataset`).
+
+---
+
 ## What We're Building
 
 An intelligent routing layer that sits in front of multiple LLM providers. It analyzes each incoming request's complexity, routes it to the cheapest model capable of handling it at acceptable quality, and continuously validates that routing decisions were correct.
