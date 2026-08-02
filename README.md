@@ -1,18 +1,30 @@
 # LLM Cost AutoPilot
 
-# Reduced LLM API costs by **36.7%** vs all GPT-4o
+# Reduced LLM API costs by **30.6%** vs all GPT-4o
 
-Demo aggregate (offline seed, `n=84`): saved **$0.1078**
-(actual $0.1862 vs GPT-4o $0.2940). Recompute anytime:
+Load-test aggregate (Phase 6.1, offline, `n=750`): saved **$0.3656**
+(actual $0.8286 vs GPT-4o $1.1942). Full report + dashboard PNG:
+[`reports/load_test_savings.md`](./reports/load_test_savings.md).
+
+```bash
+PYTHONPATH=. python -m scripts.load_test          # n=750 → reports/
+PYTHONPATH=. python -m scripts.smoke_load_test    # n=50 CI-like check
+```
+
+Smaller offline demo seed (sidebar / `--demo`, `n=84`) shows **36.7%** — useful
+for empty-DB screenshots, not the load-test headline:
 
 ```bash
 PYTHONPATH=. python -m scripts.show_savings --demo
 ```
 
-Dashboard hero (same metric): 
+Dashboard (bind localhost; load-test DB or demo seed):
 
 ```bash
+# After load_test, copy the gitignored load-test DB for the Streamlit hero:
+cp data/load_test_requests.db data/requests.db
 streamlit run dashboard/app.py --server.address=127.0.0.1 --server.port=8501
+# Or empty data/requests.db + sidebar "Load demo data" (36.7% seed)
 ```
 
 An intelligent routing layer in front of multiple LLM providers. It scores each
@@ -130,11 +142,13 @@ curl -s http://127.0.0.1:8000/v1/routing-config
 ```bash
 PYTHONPATH=. python -m scripts.smoke_metrics
 PYTHONPATH=. python -m scripts.show_savings --demo
+PYTHONPATH=. python -m scripts.smoke_load_test
 streamlit run dashboard/app.py --server.address=127.0.0.1 --server.port=8501
 ```
 
-If `data/requests.db` is empty, use **Load demo data** in the sidebar.
-Charts are aggregates only (no raw prompts).
+If `data/requests.db` is empty, use **Load demo data** in the sidebar
+(or copy `data/load_test_requests.db` after a load test). Charts are
+aggregates only (no raw prompts).
 
 ---
 
@@ -150,10 +164,29 @@ Charts are aggregates only (no raw prompts).
 | `app/audit/` | SQLite request audit trail |
 | `app/metrics/` | Savings aggregates (`cost_reduction_pct`) |
 | `configs/` | YAML: tiers, routing map, thresholds, escalation |
+| `reports/` | Phase 6.1 load-test savings report + dashboard PNG |
 | `Dockerfile` / `docker-compose.yml` | API + worker + shared `data/` volume |
 | `.env.example` | Env template — copy to `.env` (gitignored) |
 
 See [`AGENTS.md`](./AGENTS.md) for the full 6-phase build plan and current status.
+
+---
+
+## Load test (Phase 6.1)
+
+Offline portfolio run: real classifier + routing map; mocked provider costs from
+the registry (no API quota). Writes gitignored `data/load_test_requests.db` and
+commits summaries under `reports/`.
+
+| Artifact | Path |
+|---|---|
+| Savings JSON | [`reports/load_test_savings.json`](./reports/load_test_savings.json) |
+| Savings Markdown | [`reports/load_test_savings.md`](./reports/load_test_savings.md) |
+| Dashboard PNG | [`reports/load_test_dashboard.png`](./reports/load_test_dashboard.png) |
+
+Headline (n=750): **30.6%** cost reduction vs all GPT-4o.
+
+Phase 6.2 will frame the case study around this number (not started here).
 
 ---
 

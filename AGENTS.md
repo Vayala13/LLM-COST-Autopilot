@@ -9,8 +9,8 @@
 ## Current Status
 
 - **Phase:** 6 of 6 — Polish for Portfolio
-- **Last completed:** 5.3 Containerize & document — `Dockerfile` + `docker-compose.yml` (`api` + `worker` + shared `./data` volume for SQLite/JSONL). Honest design: API keeps in-process asyncio verify; worker watches `data/` + optional `retrain_from_feedback`. `.env.example` (no secrets in image); non-root; `no-new-privileges`; localhost bind. README leads with **36.7%** demo savings + architecture diagram. Smoke `scripts/smoke_worker.py`. Phase 5 complete.
-- **Next action:** Phase 6.1 — Realistic load test (500–1,000 prompts; savings report; dashboard screenshot).
+- **Last completed:** 6.1 Realistic load test — `scripts/load_test.py` (default n=750; `--smoke` n=50). Offline: real classifier + routing map; mocked `send_request` from registry pricing. Audit → gitignored `data/load_test_requests.db` via `log_completion` (prompt_hash only). Committed artifacts: `reports/load_test_savings.{json,md}` + `reports/load_test_dashboard.png`. Headline **30.6%** vs all GPT-4o (saved $0.3656; n=750). Smoke `scripts/smoke_load_test.py`. README updated (load-test headline; demo seed 36.7% noted separately).
+- **Next action:** Phase 6.2 — Case study (portfolio write-up leading with 30.6%).
 - **Blockers:** None. OpenAI disabled in `.env` (invalid key, 401) — not required; GPT-4o pricing in registry powers the dashboard counterfactual. Classification/summarization judge uses `claude-sonnet` until OpenAI is enabled. Portfolio API is local/unauthenticated (`ALLOW_ROUTING_CONFIG_WRITE` defaults on; not auth). Do not expose compose API publicly without real auth.
 - **Last updated:** 2026-08-02
 
@@ -101,7 +101,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 
 ### Phase 6: Polish for Portfolio (Day 13–14)
 
-- [ ] **6.1 Realistic load test** — Send 500–1,000 diverse prompts through the system. Generate the final cost savings report. Screenshot the dashboard. These are the portfolio artifacts.
+- [x] **6.1 Realistic load test** — Send 500–1,000 diverse prompts through the system. Generate the final cost savings report. Screenshot the dashboard. These are the portfolio artifacts. → `scripts/load_test.py` (n=750 default; `--smoke` n=50); reports in `reports/load_test_savings.{json,md}` + `reports/load_test_dashboard.png`; headline **30.6%** vs all GPT-4o.
 - [ ] **6.2 Case study** — Frame as: "I built a system that reduced LLM API costs by X% while maintaining Y% quality parity." Lead with the number. Explain the routing logic. Show the feedback loop.
 
 ---
@@ -112,6 +112,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 
 | Date | Phase/Step | What happened | Next |
 |---|---|---|---|
+| 2026-08-02 | 6.1 | Realistic load test: `scripts/load_test.py` (n=750; `--smoke` n=50) — labeled+synthetic prompts, real classify/route, mocked provider costs from registry, `log_completion` → gitignored `data/load_test_requests.db`. Reports: `reports/load_test_savings.{json,md}` + `reports/load_test_dashboard.png`. Headline **30.6%** vs all GPT-4o (saved $0.3656). Smoke `scripts/smoke_load_test.py`. README leads with load-test % (demo seed 36.7% secondary). matplotlib pinned. | Phase 6.2 (case study) |
 | 2026-08-02 | 5.3 | Containerize & document: `Dockerfile` (python:3.11-slim, non-root), `docker-compose.yml` (`api` + `worker`, shared `./data`, localhost:8000, no privileged). Honest queue: API in-process asyncio verify; worker watches JSONL/SQLite + optional retrain. `.env.example` / `.dockerignore`. README leads with 36.7% demo savings + architecture diagram + venv/compose setup. `app/worker/main.py`; smoke `scripts/smoke_worker.py`. Phase 5 complete. | Phase 6.1 (load test) |
 | 2026-08-02 | 5.2 | Config endpoints: `GET /v1/models`, `GET /v1/stats`, `GET|PUT /v1/routing-config` in `app/api/config_routes.py` + schemas. Stats via `compute_summary` (aggregates only). PUT validates registry keys, writes only under `configs/` (`save_routing_map`; preserves rationales); `ALLOW_ROUTING_CONFIG_WRITE` gate (default on; not auth). Smoke extended in `scripts/smoke_api.py`. Unauthenticated portfolio API documented. | Phase 5.3 (containerize & document) |
 | 2026-08-02 | 5.1 | FastAPI `POST /v1/completions`: `app/api/{main,schemas,completions}.py`. Schema = `prompt` **or** OpenAI-ish `messages` (extra=forbid; no client model). Pipeline: `route_prompt` → `send_request` → `log_completion` → optional async `enqueue_verification`. Response includes model/tier/rationale/cost/latency/tokens. Pinned `fastapi==0.141.1`, `uvicorn==0.52.1`, `httpx==0.28.1`. Smoke `scripts/smoke_api.py` (TestClient + mocks). README uvicorn localhost. Escalation left as TODO hook (async verify; don't block hot path). | Phase 5.2 (config endpoints) |
