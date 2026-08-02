@@ -1,7 +1,8 @@
-"""Phase 4.2 — smoke cost metrics + demo seed (offline, no browser / APIs).
+"""Phase 4.2/4.3 — smoke cost metrics + money-shot headline (offline).
 
 Builds a temp audit DB, seeds synthetic rows, and checks summary / series
-aggregates (actual vs GPT-4o, routing, quality, escalation).
+aggregates (actual vs GPT-4o, routing, quality, escalation) plus the
+portfolio ``cost_reduction_pct`` headline helpers.
 
 Run:
     PYTHONPATH=. python -m scripts.smoke_metrics
@@ -18,11 +19,14 @@ from app.metrics.cost import (
     FALLBACK_INPUT_TOKENS,
     FALLBACK_OUTPUT_TOKENS,
     GPT4O_COUNTERFACTUAL_NOTE,
+    PORTFOLIO_BASELINE_LABEL,
     compute_summary,
     cost_by_day,
     cost_by_week,
     escalation_rate_by_day,
+    format_portfolio_headline,
     gpt4o_cost_for_tokens,
+    load_portfolio_headline,
     quality_score_distribution,
     routing_distribution,
     seed_demo_requests,
@@ -56,6 +60,9 @@ def test_seed_and_summary(tmp: Path) -> None:
     assert summary.gpt4o_cost_usd > summary.actual_cost_usd
     assert summary.savings_usd > 0
     assert 0 < summary.savings_pct <= 100
+    # Phase 4.3 money-shot alias must match savings_pct.
+    assert summary.cost_reduction_pct == summary.savings_pct
+    assert summary.baseline_label == PORTFOLIO_BASELINE_LABEL
     assert summary.tokens_known_count == 28
     assert summary.tokens_fallback_count == 0
     assert summary.escalation_count >= 1
@@ -67,7 +74,9 @@ def test_seed_and_summary(tmp: Path) -> None:
         f"OK summary requests={summary.request_count} "
         f"actual=${summary.actual_cost_usd:.4f} "
         f"gpt4o=${summary.gpt4o_cost_usd:.4f} "
-        f"saved=${summary.savings_usd:.4f} ({summary.savings_pct:.1f}%) "
+        f"saved=${summary.savings_usd:.4f} "
+        f"(cost_reduction_pct={summary.cost_reduction_pct:.1f}% "
+        f"{summary.baseline_label}) "
         f"esc_rate={summary.escalation_rate:.2f}"
     )
 
@@ -137,6 +146,37 @@ def test_no_raw_prompts_in_metrics(tmp: Path) -> None:
     print("OK metrics expose aggregates only")
 
 
+def test_portfolio_headline(tmp: Path) -> None:
+    """Money-shot helpers used by scripts.show_savings / dashboard hero."""
+    db = tmp / "headline.db"
+    init_db(db)
+    assert seed_demo_requests(db_path=db, days=5, per_day=3) == 15
+
+    summary = load_portfolio_headline(db_path=db)
+    assert summary.cost_reduction_pct == summary.savings_pct
+    assert 0 < summary.cost_reduction_pct <= 100
+    line = format_portfolio_headline(summary)
+    assert f"{summary.cost_reduction_pct:.1f}%" in line
+    assert PORTFOLIO_BASELINE_LABEL in line
+    assert "Extract" not in line
+    assert "Summarize" not in line
+
+    # seed_if_empty must not wipe a non-empty DB.
+    again = load_portfolio_headline(db_path=db, seed_if_empty=True)
+    assert again.request_count == 15
+
+    empty = tmp / "empty-headline.db"
+    seeded = load_portfolio_headline(db_path=empty, seed_if_empty=True)
+    assert seeded.request_count > 0
+    assert seeded.cost_reduction_pct > 0
+
+    print(
+        f"OK portfolio headline cost_reduction_pct="
+        f"{summary.cost_reduction_pct:.1f}% {PORTFOLIO_BASELINE_LABEL}"
+    )
+    print(f"   {line}")
+
+
 def main() -> int:
     test_gpt4o_token_math()
     with tempfile.TemporaryDirectory(prefix="metrics-smoke-") as tmp_str:
@@ -145,6 +185,7 @@ def main() -> int:
         test_series(tmp)
         test_token_fallback(tmp)
         test_no_raw_prompts_in_metrics(tmp)
+        test_portfolio_headline(tmp)
     print("ALL SMOKE CHECKS PASSED")
     return 0
 
