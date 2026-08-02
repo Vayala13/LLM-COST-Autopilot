@@ -2,6 +2,8 @@
 
 from app.audit.store import (
     DEFAULT_DB_PATH,
+    connect,
+    count_requests,
     fetch_requests,
     init_db,
     log_completion,
@@ -10,6 +12,8 @@ from app.audit.store import (
 
 __all__ = [
     "DEFAULT_DB_PATH",
+    "connect",
+    "count_requests",
     "fetch_requests",
     "init_db",
     "log_completion",

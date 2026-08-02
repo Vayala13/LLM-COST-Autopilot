@@ -51,6 +51,20 @@ Expected output: `key loaded, length 108`
 
 ---
 
+## Cost dashboard (Phase 4.2)
+
+```bash
+# Offline metrics smoke (temp DB, no browser)
+PYTHONPATH=. python -m scripts.smoke_metrics
+
+# Local dashboard — bind to localhost only
+streamlit run dashboard/app.py --server.address=127.0.0.1 --server.port=8501
+```
+
+If `data/requests.db` is empty, use **Load demo data** in the sidebar for portfolio screenshots. Charts are aggregates only (no raw prompts).
+
+---
+
 ## How config loading works
 
 `config.py` reads the `.env` file at import time, so any module can do:
