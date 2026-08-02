@@ -8,3 +8,6 @@ data/prompt_features.json
 
 # Runtime verifier failure log (Phase 3.2) — prompt hashes only, still local
 data/routing_failures.jsonl
+
+# Runtime escalation log (Phase 3.3) — prompt hashes + metrics only
+data/escalations.jsonl

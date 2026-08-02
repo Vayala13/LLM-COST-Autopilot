@@ -9,10 +9,10 @@
 ## Current Status
 
 - **Phase:** 3 of 6 — Async Quality Verification Loop
-- **Last completed:** 3.2 async verifier. `app/quality/verifier.py` scores extraction (`field_coverage` via caller `required_fields`), summarization (`llm_judge_score` via `judge_model` + `send_request`), classification (`label_agreement` vs `reference_model`). `passes_threshold` in `app/quality/thresholds.py`. Async enqueue: `app/quality/queue.py` (`enqueue_verification` / `drain`). Routing failures → structured log + `data/routing_failures.jsonl` (prompt hashed). Smoke: `python -m scripts.smoke_verifier`.
-- **Next action:** Phase 3.3 — auto-escalation on caught routing failure (re-run higher-tier; log cost delta / quality gap).
+- **Last completed:** 3.3 auto-escalation. On `routing_failure`, `escalate_if_needed` (`app/quality/escalation.py`) re-runs the original prompt via `send_request` with `configs/escalation.yaml` → `escalation_model` (default tier-3 `claude-sonnet`). Latency gate: skip re-run when `avg_latency_s` exceeds `max_escalation_latency_s` (still logs would-be). Returns `EscalationResult` (original/escalated model + outputs, cost delta, quality gap, latency flags). Logs → structured warning + `data/escalations.jsonl` (prompt hashed; outputs omitted from disk). Smoke: `python -m scripts.smoke_escalation`.
+- **Next action:** Phase 3.4 — feedback to classifier (routing failures → training examples; weekly retrain loop).
 - **Blockers:** None. OpenAI disabled in `.env` (invalid key, 401) — not required; GPT pricing stays in registry for the Phase 4.3 "vs GPT-4o" cost math. Classification/summarization judge uses `claude-sonnet` until OpenAI is enabled.
-- **Last updated:** 2026-08-01
+- **Last updated:** 2026-08-02
 
 > **Update rule:** Whenever a step is finished, change "Last completed", set "Next action" to the next unchecked box, and add a line to the Session Log.
 
@@ -72,7 +72,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 
 - [x] **3.1 Quality thresholds per use case** — Define "good enough" per request type. Extraction: `field_coverage >= 1.0`. Summarization: LLM-as-judge score >4/5 (`claude-sonnet` judge). Classification: label agreement with high-tier reference (`claude-sonnet`; plan named GPT-4o, OpenAI disabled). → `configs/quality_thresholds.yaml`; loader `app/quality/thresholds.py`; smoke `python -m scripts.show_quality_thresholds`.
 - [x] **3.2 Async verifier** — After the response returns to the user, queue an async job that sends the same prompt to the highest-tier model and compares outputs. Score agreement. If the cheap model diverges significantly, log a routing failure. → `app/quality/verifier.py` + `app/quality/queue.py`; smoke `python -m scripts.smoke_verifier`.
-- [ ] **3.3 Auto-escalation** — On a caught failure, automatically re-run with the higher-tier model and return the better result (if latency permits). Log the escalation: original model, escalated model, cost delta, quality gap that triggered it.
+- [x] **3.3 Auto-escalation** — On a caught failure, automatically re-run with the higher-tier model and return the better result (if latency permits). Log the escalation: original model, escalated model, cost delta, quality gap that triggered it. → `configs/escalation.yaml`; `app/quality/escalation.py` (`escalate_if_needed`); smoke `python -m scripts.smoke_escalation`.
 - [ ] **3.4 Feedback to classifier** — Every routing failure becomes a new training example. Build a simple loop that retrains the classifier weekly using accumulated failure data. This is the flywheel that makes the system smarter over time.
 
 ### Phase 4: Logging and Cost Dashboard (Day 9–11)
@@ -100,6 +100,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 
 | Date | Phase/Step | What happened | Next |
 |---|---|---|---|
+| 2026-08-02 | 3.3 | Added auto-escalation on routing failure: `configs/escalation.yaml` (`escalation_model` + optional `max_escalation_latency_s`), `app/quality/escalation.py` (`escalate_if_needed`, `EscalationResult`, `load_escalation_config`). Re-runs original prompt via unified `send_request` to tier-3 target; skips on pass / already-highest / latency budget (would-be still logged). JSONL `data/escalations.jsonl` (prompt hash + metrics; no raw prompt/outputs). Smoke `scripts/smoke_escalation.py` (offline mocks). | Phase 3.4 (classifier feedback / weekly retrain) |
 | 2026-08-01 | 3.2 | Added async quality verifier: `app/quality/verifier.py` (`verify`, field_coverage / llm_judge_score / label_agreement scoring via unified `send_request`), `passes_threshold` in `thresholds.py`, in-process asyncio queue `app/quality/queue.py` (`enqueue_verification`, `drain`). Routing failures logged (structured warning + JSONL under `data/routing_failures.jsonl` with prompt hash only). Smoke `scripts/smoke_verifier.py` (mocked offline; optional `--live`). | Phase 3.3 (auto-escalation) |
 | 2026-08-01 | 3.1 | Added `configs/quality_thresholds.yaml` (extraction field_coverage >= 1.0; summarization llm_judge_score > 4/5 with judge claude-sonnet; classification label_agreement == 1.0 with reference claude-sonnet — GPT-4o unavailable while OpenAI disabled). Implemented `app/quality/thresholds.py` (`load_quality_thresholds`, `threshold_for`) validating required use cases, comparison ops, and registry keys. Smoke script `scripts/show_quality_thresholds.py`. | Phase 3.2 (async verifier) |
 | 2026-07-31 | 2.4 | Added `configs/routing_map.yaml` (Tier 1 → llama-local, Tier 2 → gemini-flash, Tier 3 → claude-sonnet). Implemented `app/router/map.py` (`load_routing_map`, `model_for_tier`, `route_prompt`) validating registry keys on load. Smoke script `scripts/show_routing.py`. Phase 2 complete. | Phase 3.1 (quality thresholds) |
