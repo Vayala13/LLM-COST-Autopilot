@@ -19,6 +19,8 @@ Call site for the future FastAPI path (and smokes today)::
         escalation_model=escalation.escalated_model,
         cost_delta=escalation.cost_delta_usd,
         use_case=use_case,
+        input_tokens=response.input_tokens,
+        output_tokens=response.output_tokens,
     )
 """
 
@@ -35,7 +37,9 @@ DEFAULT_DB_PATH = _ROOT / "data" / "requests.db"
 
 # Schema: one audit row per request. Optional escalation columns stay NULL
 # when no escalation ran. verifier_quality_score may be NULL if verify
-# has not completed yet (async path).
+# has not completed yet (async path). input_tokens / output_tokens are
+# nullable so Phase 4.1 rows still load; Phase 4.2 uses them for GPT-4o
+# counterfactual cost when present.
 _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,9 +53,17 @@ CREATE TABLE IF NOT EXISTS requests (
     escalated INTEGER NOT NULL DEFAULT 0,
     escalation_model TEXT,
     cost_delta REAL,
-    use_case TEXT
+    use_case TEXT,
+    input_tokens INTEGER,
+    output_tokens INTEGER
 );
 """
+
+# Minimal migration for DBs created before Phase 4.2 token columns.
+_MIGRATE_TOKEN_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("input_tokens", "ALTER TABLE requests ADD COLUMN input_tokens INTEGER"),
+    ("output_tokens", "ALTER TABLE requests ADD COLUMN output_tokens INTEGER"),
+)
 
 _INSERT_SQL = """
 INSERT INTO requests (
@@ -65,8 +77,10 @@ INSERT INTO requests (
     escalated,
     escalation_model,
     cost_delta,
-    use_case
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    use_case,
+    input_tokens,
+    output_tokens
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 _SELECT_RECENT_SQL = """
@@ -82,7 +96,9 @@ SELECT
     escalated,
     escalation_model,
     cost_delta,
-    use_case
+    use_case,
+    input_tokens,
+    output_tokens
 FROM requests
 ORDER BY id DESC
 LIMIT ?
@@ -91,7 +107,7 @@ LIMIT ?
 
 @dataclass(frozen=True)
 class RequestLogRow:
-    """One audit-trail row (readback / smoke)."""
+    """One audit-trail row (readback / smoke / metrics)."""
 
     id: int
     timestamp: str
@@ -105,6 +121,8 @@ class RequestLogRow:
     escalation_model: str | None
     cost_delta: float | None
     use_case: str | None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
 
 
 def _resolve_db_path(db_path: str | Path | None) -> Path:
@@ -122,13 +140,63 @@ def _connect(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
+def _ensure_schema(conn: sqlite3.Connection) -> None:
+    """Create table if missing; add nullable token columns when absent."""
+    conn.execute(_SCHEMA_SQL)
+    existing = {str(r[1]) for r in conn.execute("PRAGMA table_info(requests)")}
+    for col_name, alter_sql in _MIGRATE_TOKEN_COLUMNS:
+        if col_name not in existing:
+            conn.execute(alter_sql)
+
+
 def init_db(db_path: str | Path | None = None) -> Path:
     """Create the ``requests`` table if missing. Returns the DB path used."""
     path = _resolve_db_path(db_path)
     with _connect(path) as conn:
-        conn.execute(_SCHEMA_SQL)
+        _ensure_schema(conn)
         conn.commit()
     return path
+
+
+def connect(db_path: str | Path | None = None) -> sqlite3.Connection:
+    """Open a parameterized-SQL-ready connection (schema ensured).
+
+    Caller owns the connection and must close it. Used by metrics aggregates.
+    """
+    path = init_db(db_path)
+    return _connect(path)
+
+
+def _row_from_sqlite(r: sqlite3.Row) -> RequestLogRow:
+    keys = set(r.keys())
+    return RequestLogRow(
+        id=int(r["id"]),
+        timestamp=str(r["timestamp"]),
+        prompt_hash=str(r["prompt_hash"]),
+        complexity_tier=int(r["complexity_tier"]),
+        routed_model=str(r["routed_model"]),
+        cost=float(r["cost"]),
+        latency=float(r["latency"]),
+        verifier_quality_score=(
+            None
+            if r["verifier_quality_score"] is None
+            else float(r["verifier_quality_score"])
+        ),
+        escalated=bool(r["escalated"]),
+        escalation_model=r["escalation_model"],
+        cost_delta=(None if r["cost_delta"] is None else float(r["cost_delta"])),
+        use_case=r["use_case"],
+        input_tokens=(
+            None
+            if "input_tokens" not in keys or r["input_tokens"] is None
+            else int(r["input_tokens"])
+        ),
+        output_tokens=(
+            None
+            if "output_tokens" not in keys or r["output_tokens"] is None
+            else int(r["output_tokens"])
+        ),
+    )
 
 
 def log_request(
@@ -143,6 +211,8 @@ def log_request(
     escalation_model: str | None = None,
     cost_delta: float | None = None,
     use_case: str | None = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
     timestamp: str | None = None,
     db_path: str | Path | None = None,
 ) -> int:
@@ -161,6 +231,14 @@ def log_request(
         raise ValueError("cost must be a non-negative number")
     if not isinstance(latency, (int, float)) or latency < 0:
         raise ValueError("latency must be a non-negative number")
+    if input_tokens is not None and (
+        not isinstance(input_tokens, int) or input_tokens < 0
+    ):
+        raise ValueError("input_tokens must be a non-negative int or None")
+    if output_tokens is not None and (
+        not isinstance(output_tokens, int) or output_tokens < 0
+    ):
+        raise ValueError("output_tokens must be a non-negative int or None")
 
     ts = timestamp or datetime.now(timezone.utc).isoformat()
     path = init_db(db_path)
@@ -181,6 +259,8 @@ def log_request(
                 escalation_model,
                 None if cost_delta is None else float(cost_delta),
                 use_case,
+                input_tokens,
+                output_tokens,
             ),
         )
         conn.commit()
@@ -200,6 +280,8 @@ def log_completion(
     escalation_model: str | None = None,
     cost_delta: float | None = None,
     use_case: str | None = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
     timestamp: str | None = None,
     db_path: str | Path | None = None,
 ) -> int:
@@ -220,6 +302,8 @@ def log_completion(
         escalation_model=escalation_model,
         cost_delta=cost_delta,
         use_case=use_case,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
         timestamp=timestamp,
         db_path=db_path,
     )
@@ -230,7 +314,7 @@ def fetch_requests(
     limit: int = 50,
     db_path: str | Path | None = None,
 ) -> list[RequestLogRow]:
-    """Read recent audit rows (newest first). Used by smoke / future dashboard."""
+    """Read recent audit rows (newest first). Used by smoke / dashboard."""
     if not isinstance(limit, int) or limit < 1:
         raise ValueError("limit must be a positive int")
     path = init_db(db_path)
@@ -238,29 +322,16 @@ def fetch_requests(
     with _connect(path) as conn:
         # Parameterized LIMIT — never interpolate into SQL text.
         for r in conn.execute(_SELECT_RECENT_SQL, (limit,)):
-            rows.append(
-                RequestLogRow(
-                    id=int(r["id"]),
-                    timestamp=str(r["timestamp"]),
-                    prompt_hash=str(r["prompt_hash"]),
-                    complexity_tier=int(r["complexity_tier"]),
-                    routed_model=str(r["routed_model"]),
-                    cost=float(r["cost"]),
-                    latency=float(r["latency"]),
-                    verifier_quality_score=(
-                        None
-                        if r["verifier_quality_score"] is None
-                        else float(r["verifier_quality_score"])
-                    ),
-                    escalated=bool(r["escalated"]),
-                    escalation_model=r["escalation_model"],
-                    cost_delta=(
-                        None if r["cost_delta"] is None else float(r["cost_delta"])
-                    ),
-                    use_case=r["use_case"],
-                )
-            )
+            rows.append(_row_from_sqlite(r))
     return rows
+
+
+def count_requests(*, db_path: str | Path | None = None) -> int:
+    """Return total audit row count (parameterized; no user input in SQL)."""
+    path = init_db(db_path)
+    with _connect(path) as conn:
+        row = conn.execute("SELECT COUNT(*) AS n FROM requests").fetchone()
+    return int(row["n"]) if row is not None else 0
 
 
 def row_to_dict(row: RequestLogRow) -> dict[str, Any]:
@@ -278,4 +349,6 @@ def row_to_dict(row: RequestLogRow) -> dict[str, Any]:
         "escalation_model": row.escalation_model,
         "cost_delta": row.cost_delta,
         "use_case": row.use_case,
+        "input_tokens": row.input_tokens,
+        "output_tokens": row.output_tokens,
     }
