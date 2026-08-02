@@ -9,8 +9,8 @@ Scoring uses thresholds from ``configs/quality_thresholds.yaml`` via
 ``app.providers.client.send_request`` only — no provider SDKs here.
 
 Extraction field coverage: the caller passes ``required_fields``; score is
-(fields whose names appear case-insensitively in the cheap output) /
-len(required_fields).
+(fields whose names appear as case-insensitive whole words in the cheap
+output) / len(required_fields).
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ import hashlib
 import json
 import logging
 import re
+import string
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -62,13 +63,19 @@ def prompt_hash(prompt: str) -> str:
 def score_field_coverage(output_text: str, required_fields: list[str]) -> float:
     """Fraction of required field names present in ``output_text``.
 
-    Presence = case-insensitive substring match of the field name. Callers
-    must supply a non-empty ``required_fields`` list for extraction jobs.
+    Presence = case-insensitive whole-word match (``\\b``) so short names
+    like ``id`` do not match inside ``invalid``. Callers must supply a
+    non-empty ``required_fields`` list for extraction jobs.
     """
     if not required_fields:
         raise ValueError("extraction requires a non-empty required_fields list")
     text = output_text.lower()
-    present = sum(1 for field in required_fields if field.lower() in text)
+    present = 0
+    for field in required_fields:
+        # Word-boundary match avoids substring false positives (security/quality).
+        pattern = rf"\b{re.escape(field.lower())}\b"
+        if re.search(pattern, text):
+            present += 1
     return present / len(required_fields)
 
 
@@ -77,14 +84,17 @@ def normalize_label(text: str) -> str:
     if not text or not text.strip():
         return ""
     first_line = text.strip().splitlines()[0]
-    return " ".join(first_line.lower().split())
+    # Strip trailing sentence punctuation so "positive." == "positive".
+    cleaned = " ".join(first_line.lower().split()).rstrip(string.punctuation)
+    return cleaned
 
 
 def parse_judge_score(text: str, scale_max: float = 5.0) -> float:
     """Parse a numeric judge score from free-form model output.
 
-    Prefers patterns like ``score: 4`` / ``4/5``; falls back to the first
-    number in range [1, scale_max].
+    Prefers patterns like ``score: 4`` / ``4/5``; falls back to the *last*
+    number in range [1, scale_max] so prose like "scale of 1 to 5 … 4"
+    does not latch onto the scale floor.
     """
     if not text or not text.strip():
         raise ValueError("empty judge response; cannot parse score")
@@ -101,10 +111,14 @@ def parse_judge_score(text: str, scale_max: float = 5.0) -> float:
         if slash:
             value = float(slash.group(1))
         else:
-            bare = re.search(r"(\d+(?:\.\d+)?)", lowered)
-            if not bare:
+            candidates = [
+                float(m.group(1))
+                for m in re.finditer(r"(\d+(?:\.\d+)?)", lowered)
+                if 1.0 <= float(m.group(1)) <= scale_max
+            ]
+            if not candidates:
                 raise ValueError(f"no numeric score in judge output: {text!r:.80}")
-            value = float(bare.group(1))
+            value = candidates[-1]
 
     if value < 1.0 or value > scale_max:
         raise ValueError(

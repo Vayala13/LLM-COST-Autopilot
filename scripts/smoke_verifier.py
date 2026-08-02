@@ -60,9 +60,15 @@ def _mock_send(prompt: str, model_config) -> Response:
 def test_helpers() -> None:
     assert score_field_coverage("name: Ada\nage: 36", ["name", "age"]) == 1.0
     assert score_field_coverage("name: Ada", ["name", "age"]) == 0.5
+    # Whole-word: "id" must not match inside "invalid"
+    assert score_field_coverage("status: invalid", ["id"]) == 0.0
+    assert score_field_coverage("id: 7\nstatus: invalid", ["id"]) == 1.0
     assert normalize_label("  Positive \nextra") == "positive"
+    assert normalize_label("positive.") == "positive"
     assert parse_judge_score("Score: 5") == 5.0
     assert parse_judge_score("4/5") == 4.0
+    # Last in-range number wins over scale prose ("1 to 5")
+    assert parse_judge_score("on a scale of 1 to 5 I rate this 4") == 4.0
 
     t_sum = threshold_for("summarization")
     assert passes_threshold(5.0, t_sum) is True
