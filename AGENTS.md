@@ -8,9 +8,9 @@
 
 ## Current Status
 
-- **Phase:** 6 of 6 — Polish for Portfolio
-- **Last completed:** 6.1 Realistic load test — `scripts/load_test.py` (default n=750; `--smoke` n=50). Offline: real classifier + routing map; mocked `send_request` from registry pricing. Audit → gitignored `data/load_test_requests.db` via `log_completion` (prompt_hash only). Committed artifacts: `reports/load_test_savings.{json,md}` + `reports/load_test_dashboard.png`. Headline **30.6%** vs all GPT-4o (saved $0.3656; n=750). Smoke `scripts/smoke_load_test.py`. README updated (load-test headline; demo seed 36.7% noted separately).
-- **Next action:** Phase 6.2 — Case study (portfolio write-up leading with 30.6%).
+- **Phase:** 6 of 6 — Polish for Portfolio (**complete**)
+- **Last completed:** 6.2 Case study — `CASE_STUDY.md` leads with **30.6%** vs all GPT-4o (n=750 load test), explains tier→model routing, async verify / escalate, and classifier feedback flywheel; quality framed via **3.2%** escalation rate (~96.8% stayed on cheap route in the offline harness). Linked from README + portfolio log. All six phases done.
+- **Next action:** None — build plan complete. Optional: live keyed load test, auth for public deploy, portfolio personalization (`OWNER` in `portfolio/index.html`).
 - **Blockers:** None. OpenAI disabled in `.env` (invalid key, 401) — not required; GPT-4o pricing in registry powers the dashboard counterfactual. Classification/summarization judge uses `claude-sonnet` until OpenAI is enabled. Portfolio API is local/unauthenticated (`ALLOW_ROUTING_CONFIG_WRITE` defaults on; not auth). Do not expose compose API publicly without real auth.
 - **Last updated:** 2026-08-02
 
@@ -34,7 +34,7 @@ Durable notes for running this project on a Cursor Cloud VM. Standard setup live
 
 An intelligent routing layer that sits in front of multiple LLM providers. It analyzes each incoming request's complexity, routes it to the cheapest model capable of handling it at acceptable quality, and continuously validates that routing decisions were correct.
 
-**Portfolio headline (the goal):** "Reduced LLM API costs by X% while maintaining Y% quality parity."
+**Portfolio headline (the goal):** "Reduced LLM API costs by 30.6% vs all GPT-4o" (offline load test, n=750; see `CASE_STUDY.md`).
 
 ---
 
@@ -102,7 +102,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 ### Phase 6: Polish for Portfolio (Day 13–14)
 
 - [x] **6.1 Realistic load test** — Send 500–1,000 diverse prompts through the system. Generate the final cost savings report. Screenshot the dashboard. These are the portfolio artifacts. → `scripts/load_test.py` (n=750 default; `--smoke` n=50); reports in `reports/load_test_savings.{json,md}` + `reports/load_test_dashboard.png`; headline **30.6%** vs all GPT-4o.
-- [ ] **6.2 Case study** — Frame as: "I built a system that reduced LLM API costs by X% while maintaining Y% quality parity." Lead with the number. Explain the routing logic. Show the feedback loop.
+- [x] **6.2 Case study** — Frame as: "I built a system that reduced LLM API costs by 30.6% vs all GPT-4o" with quality safety net (verify/escalate/feedback; 3.2% escalation in load harness). → `CASE_STUDY.md`; README + portfolio log links.
 
 ---
 
@@ -112,6 +112,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 
 | Date | Phase/Step | What happened | Next |
 |---|---|---|---|
+| 2026-08-02 | 6.2 | Case study `CASE_STUDY.md`: lead with **30.6%** vs all GPT-4o; routing map + async verify/escalate + feedback flywheel; escalation rate 3.2% as quality signal in offline harness. README + portfolio (all 6 phases done). Local (no cloud). Phase 6 / build plan complete. | Optional polish (live keys, auth, OWNER fields) |
 | 2026-08-02 | 6.1 | Realistic load test: `scripts/load_test.py` (n=750; `--smoke` n=50) — labeled+synthetic prompts, real classify/route, mocked provider costs from registry, `log_completion` → gitignored `data/load_test_requests.db`. Reports: `reports/load_test_savings.{json,md}` + `reports/load_test_dashboard.png`. Headline **30.6%** vs all GPT-4o (saved $0.3656). Smoke `scripts/smoke_load_test.py`. README leads with load-test % (demo seed 36.7% secondary). matplotlib pinned. | Phase 6.2 (case study) |
 | 2026-08-02 | 5.3 | Containerize & document: `Dockerfile` (python:3.11-slim, non-root), `docker-compose.yml` (`api` + `worker`, shared `./data`, localhost:8000, no privileged). Honest queue: API in-process asyncio verify; worker watches JSONL/SQLite + optional retrain. `.env.example` / `.dockerignore`. README leads with 36.7% demo savings + architecture diagram + venv/compose setup. `app/worker/main.py`; smoke `scripts/smoke_worker.py`. Phase 5 complete. | Phase 6.1 (load test) |
 | 2026-08-02 | 5.2 | Config endpoints: `GET /v1/models`, `GET /v1/stats`, `GET|PUT /v1/routing-config` in `app/api/config_routes.py` + schemas. Stats via `compute_summary` (aggregates only). PUT validates registry keys, writes only under `configs/` (`save_routing_map`; preserves rationales); `ALLOW_ROUTING_CONFIG_WRITE` gate (default on; not auth). Smoke extended in `scripts/smoke_api.py`. Unauthenticated portfolio API documented. | Phase 5.3 (containerize & document) |

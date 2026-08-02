@@ -6,6 +6,9 @@ Load-test aggregate (Phase 6.1, offline, `n=750`): saved **$0.3656**
 (actual $0.8286 vs GPT-4o $1.1942). Full report + dashboard PNG:
 [`reports/load_test_savings.md`](./reports/load_test_savings.md).
 
+**Case study (Phase 6.2):** [`CASE_STUDY.md`](./CASE_STUDY.md) — routing logic,
+quality loop, and the 30.6% headline framed for portfolio.
+
 ```bash
 PYTHONPATH=. python -m scripts.load_test          # n=750 → reports/
 PYTHONPATH=. python -m scripts.smoke_load_test    # n=50 CI-like check
