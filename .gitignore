@@ -18,3 +18,8 @@ data/feedback_prompts.jsonl
 # SQLite request audit trail (Phase 4.1) — prompt hashes + metrics only, local
 data/requests.db
 data/requests.db-*
+
+# Phase 5.2 smoke: temp routing maps under configs/ (never commit)
+configs/_smoke_*.yaml
+configs/*.yaml.tmp
+configs/*.yml.tmp

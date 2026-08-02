@@ -1,4 +1,4 @@
-"""FastAPI application entry — Phase 5.1 ``POST /v1/completions``.
+"""FastAPI application entry — Phase 5.1 completions + Phase 5.2 config.
 
 Run locally (bind localhost; no reload/debug in production defaults)::
 
@@ -9,6 +9,9 @@ OpenAPI docs: http://127.0.0.1:8000/docs  (OK for local/portfolio demos).
 Auth: unauthenticated for local portfolio use. Do not deploy publicly
 without adding real authentication. No CORS ``allow_origins=["*"]`` with
 credentials — CORS is omitted so browsers only hit same-origin / tools.
+
+PUT /v1/routing-config is gated by ``ALLOW_ROUTING_CONFIG_WRITE`` (default on
+for local demos). That flag is not auth — disable writes in non-local deploys.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from app.api.completions import run_completion
+from app.api.config_routes import register_config_routes
 from app.api.schemas import CompletionRequest, CompletionResponse
 from app.audit.store import init_db
 from app.providers.client import ProviderNotConfigured
@@ -32,13 +36,16 @@ logger = logging.getLogger(__name__)
 def create_app(
     *,
     db_path: str | Path | None = None,
+    routing_map_path: str | Path | None = None,
+    allow_routing_config_write: bool | None = None,
     send_request_fn: Any = None,
     enqueue_verification_fn: Any = None,
 ) -> FastAPI:
     """Build the FastAPI app.
 
     Defaults are safe for portfolio demos: docs enabled, debug/reload off,
-    no wildcard CORS. ``db_path`` / injectable callables support offline smoke.
+    no wildcard CORS. ``db_path`` / ``routing_map_path`` / injectable callables
+    support offline smoke (routing map path must stay under ``configs/``).
     """
 
     @asynccontextmanager
@@ -53,15 +60,20 @@ def create_app(
         description=(
             "Intelligent LLM routing layer. "
             "`POST /v1/completions` — the router chooses the model; "
-            "clients do not. Local/portfolio API is unauthenticated."
+            "clients do not. "
+            "`GET /v1/models`, `GET /v1/stats`, `GET|PUT /v1/routing-config` "
+            "for registry, savings aggregates, and live routing map updates. "
+            "Local/portfolio API is unauthenticated."
         ),
-        version="0.5.1",
+        version="0.5.2",
         docs_url="/docs",
         redoc_url="/redoc",
         # debug defaults False — do not enable reload here (CLI flag for local only).
         lifespan=lifespan,
     )
     application.state.db_path = db_path
+    application.state.routing_map_path = routing_map_path
+    application.state.allow_routing_config_write = allow_routing_config_write
     application.state.send_request_fn = send_request_fn
     application.state.enqueue_verification_fn = enqueue_verification_fn
 
@@ -89,6 +101,7 @@ def create_app(
             return run_completion(
                 body,
                 db_path=request.app.state.db_path,
+                routing_map_path=request.app.state.routing_map_path,
                 send_request_fn=request.app.state.send_request_fn,
                 enqueue_verification_fn=request.app.state.enqueue_verification_fn,
             )
@@ -117,6 +130,7 @@ def create_app(
             content={"detail": f"Provider not configured: {exc}"},
         )
 
+    register_config_routes(application)
     return application
 
 
