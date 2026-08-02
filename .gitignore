@@ -14,3 +14,7 @@ data/escalations.jsonl
 
 # Classifier feedback from routing failures (Phase 3.4) — labeled prompts, local
 data/feedback_prompts.jsonl
+
+# SQLite request audit trail (Phase 4.1) — prompt hashes + metrics only, local
+data/requests.db
+data/requests.db-*

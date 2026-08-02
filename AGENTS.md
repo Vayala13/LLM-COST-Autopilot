@@ -8,9 +8,9 @@
 
 ## Current Status
 
-- **Phase:** 3 of 6 — Async Quality Verification Loop (**complete**)
-- **Last completed:** 3.4 feedback to classifier. On `routing_failure`, `verify` records a labeled example via `app/classifier/feedback.py` (`record_routing_failure_example`) while the prompt is still in memory — relabel rule `bump_routed_tier_plus_1_cap_3` (infer tier from routing map reverse-lookup, else use-case base; +1 capped at 3). Accumulates in gitignored `data/feedback_prompts.jsonl`. Weekly retrain: `python -m scripts.retrain_from_feedback` (manual/cron; no Celery) merges base `labeled_prompts.jsonl` + feedback, rebuilds features, reuses `train_and_save`. Smoke: `python -m scripts.smoke_feedback`.
-- **Next action:** Phase 4.1 — log everything (SQLite audit trail per request).
+- **Phase:** 4 of 6 — Logging and Cost Dashboard (in progress)
+- **Last completed:** 4.1 SQLite audit trail. Every routed completion → one row in gitignored `data/requests.db` via `app/audit/store.py` (`init_db`, `log_request`, call-site helper `log_completion`). Columns: timestamp, prompt_hash, complexity_tier, routed_model, cost, latency, verifier_quality_score, escalated, plus nullable escalation_model / cost_delta / use_case. Parameterized SQL only; prompt hash never raw prompt. Smoke: `python -m scripts.smoke_audit`.
+- **Next action:** Phase 4.2 — cost dashboard (daily/weekly cost vs GPT-4o, routing pie, quality + escalation rate).
 - **Blockers:** None. OpenAI disabled in `.env` (invalid key, 401) — not required; GPT pricing stays in registry for the Phase 4.3 "vs GPT-4o" cost math. Classification/summarization judge uses `claude-sonnet` until OpenAI is enabled.
 - **Last updated:** 2026-08-02
 
@@ -77,7 +77,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 
 ### Phase 4: Logging and Cost Dashboard (Day 9–11)
 
-- [ ] **4.1 Log everything** — Every request → one DB row: timestamp, prompt hash, complexity tier, routed model, cost, latency, verifier quality score, escalated flag. This is the audit trail.
+- [x] **4.1 Log everything** — Every request → one DB row: timestamp, prompt hash, complexity tier, routed model, cost, latency, verifier quality score, escalated flag. This is the audit trail. → `app/audit/store.py` (`log_completion`); DB `data/requests.db` (gitignored); smoke `python -m scripts.smoke_audit`.
 - [ ] **4.2 Cost dashboard** — Show total cost per day/week vs. what it would have cost using GPT-4o for everything ("you saved $X"), routing distribution (pie chart of model share), quality score distribution, escalation rate over time.
 - [ ] **4.3 Money-shot metric** — Calculate and prominently display the cost reduction percentage. If routing saved 60% vs. all-most-expensive, that number is the headline of the portfolio piece.
 
@@ -100,6 +100,7 @@ An intelligent routing layer that sits in front of multiple LLM providers. It an
 
 | Date | Phase/Step | What happened | Next |
 |---|---|---|---|
+| 2026-08-02 | 4.1 | SQLite request audit trail: `app/audit/store.py` (`init_db`, `log_request`, `log_completion`, `fetch_requests`). One row per completion — timestamp, prompt_hash, complexity_tier, routed_model, cost, latency, verifier_quality_score, escalated (+ nullable escalation_model / cost_delta / use_case). Parameterized SQL; DB `data/requests.db` gitignored. Smoke `scripts/smoke_audit.py` (offline temp DB). FastAPI wiring deferred to Phase 5. | Phase 4.2 (cost dashboard) |
 | 2026-08-02 | 3.4 | Classifier feedback flywheel: `app/classifier/feedback.py` records labeled examples on routing failure (prompt in memory; relabel = routed tier + 1 capped at 3). Accumulates in gitignored `data/feedback_prompts.jsonl`. `scripts/retrain_from_feedback.py` merges base + feedback, rebuilds features, reuses `train_and_save` (weekly = cron/manual). Hooked from `verify()`. Smoke `scripts/smoke_feedback.py` (offline). Phase 3 complete. | Phase 4.1 (SQLite request logging) |
 | 2026-08-02 | 3.3 | Added auto-escalation on routing failure: `configs/escalation.yaml` (`escalation_model` + optional `max_escalation_latency_s`), `app/quality/escalation.py` (`escalate_if_needed`, `EscalationResult`, `load_escalation_config`). Re-runs original prompt via unified `send_request` to tier-3 target; skips on pass / already-highest / latency budget (would-be still logged). JSONL `data/escalations.jsonl` (prompt hash + metrics; no raw prompt/outputs). Smoke `scripts/smoke_escalation.py` (offline mocks). | Phase 3.4 (classifier feedback / weekly retrain) |
 | 2026-08-01 | 3.2 | Added async quality verifier: `app/quality/verifier.py` (`verify`, field_coverage / llm_judge_score / label_agreement scoring via unified `send_request`), `passes_threshold` in `thresholds.py`, in-process asyncio queue `app/quality/queue.py` (`enqueue_verification`, `drain`). Routing failures logged (structured warning + JSONL under `data/routing_failures.jsonl` with prompt hash only). Smoke `scripts/smoke_verifier.py` (mocked offline; optional `--live`). | Phase 3.3 (auto-escalation) |
