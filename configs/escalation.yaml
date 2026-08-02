@@ -1,0 +1,21 @@
+# Phase 3.3 — auto-escalation on routing failure.
+#
+# Rule: when verify() marks routing_failure=True, re-run the *original*
+# user prompt with ``escalation_model`` via unified send_request.
+# ``escalation_model`` is the tier-3 / highest-quality registry key
+# (same as routing_map tier 3). If the routed model is already that key,
+# skip the re-run (nowhere higher to go). Swap the key here without code
+# changes (e.g. gpt-4o when OpenAI is enabled).
+#
+# Latency gate: compare MODEL_REGISTRY[escalation_model].avg_latency_s
+# against ``max_escalation_latency_s``. If over budget, skip the re-run
+# but still append a would-be escalation record to the JSONL log.
+# Set null to disable the gate (always escalate on failure).
+
+version: 1
+
+escalation_model: claude-sonnet
+
+# Seconds; null disables. 3.0 allows Sonnet (~2.0s avg) and only blocks
+# slower configured targets.
+max_escalation_latency_s: 3.0
