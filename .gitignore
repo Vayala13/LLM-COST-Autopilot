@@ -19,6 +19,10 @@ data/feedback_prompts.jsonl
 data/requests.db
 data/requests.db-*
 
+# Phase 6.1 load-test audit DB (heavy; summary lives in reports/)
+data/load_test_requests.db
+data/load_test_requests.db-*
+
 # Phase 5.2 smoke: temp routing maps under configs/ (never commit)
 configs/_smoke_*.yaml
 configs/*.yaml.tmp

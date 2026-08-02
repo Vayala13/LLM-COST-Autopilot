@@ -1,0 +1,36 @@
+{
+  "n": 750,
+  "cost_reduction_pct": 30.61,
+  "savings_usd": 0.36556,
+  "actual_cost_usd": 0.828633,
+  "gpt4o_cost_usd": 1.194193,
+  "baseline_label": "vs all GPT-4o",
+  "escalation_count": 24,
+  "escalation_rate": 0.032,
+  "mean_quality_score": 2.148,
+  "routing_distribution": [
+    {
+      "routed_model": "llama-local",
+      "request_count": 425,
+      "share": 0.5667
+    },
+    {
+      "routed_model": "gemini-flash",
+      "request_count": 215,
+      "share": 0.2867
+    },
+    {
+      "routed_model": "claude-sonnet",
+      "request_count": 110,
+      "share": 0.1467
+    }
+  ],
+  "tier_distribution": {
+    "1": 425,
+    "2": 215,
+    "3": 110
+  },
+  "headline": "Reduced LLM API costs by 30.6% vs all GPT-4o (saved $0.3656; actual $0.8286 vs GPT-4o $1.1942; n=750)",
+  "mode": "full",
+  "counterfactual_note": "Hypothetical GPT-4o cost uses MODEL_REGISTRY['gpt-4o'] list pricing on per-row input/output tokens when present; otherwise falls back to 500 in / 250 out tokens per request."
+}
