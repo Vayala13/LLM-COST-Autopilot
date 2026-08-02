@@ -154,6 +154,10 @@ def train_and_save(
     joblib.dump(bundle, model_path)
     print(f"\nWrote model → {model_path}")
 
+    try:
+        model_path_meta = str(model_path.resolve().relative_to(ROOT.resolve()))
+    except ValueError:
+        model_path_meta = str(model_path)
     metrics = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "n_examples": int(len(y)),
@@ -164,7 +168,7 @@ def train_and_save(
         "models": results,
         "winner": winner["name"],
         "winner_accuracy": winner["accuracy"],
-        "model_path": str(model_path),
+        "model_path": model_path_meta,
     }
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
     metrics_path.write_text(json.dumps(metrics, indent=2), encoding="utf-8")

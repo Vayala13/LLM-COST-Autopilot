@@ -75,18 +75,51 @@ def corrected_tier(
 
 
 def load_feedback(path: Path | str | None = None) -> list[dict[str, Any]]:
-    """Load accumulated feedback JSONL rows (empty list if missing)."""
+    """Load accumulated feedback JSONL rows (empty list if missing).
+
+    Skips blank / corrupt lines so one bad row cannot block retrain.
+    """
     path = Path(path) if path else DEFAULT_FEEDBACK_PATH
     if not path.exists():
         return []
     rows: list[dict[str, Any]] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        logger.error("failed to read feedback log %s: %s", path, exc)
+        return []
+    for line_no, line in enumerate(lines, start=1):
         line = line.strip()
         if not line:
             continue
-        # Trusted local feedback file written by this module — not user upload.
-        rows.append(json.loads(line))
+        try:
+            # Trusted local feedback file written by this module — not user upload.
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            logger.warning("skip corrupt feedback line %s:%s", path, line_no)
     return rows
+
+
+def _feedback_has_hash(path: Path, prompt_hash: str) -> bool:
+    """True if ``prompt_hash`` already appears in the feedback JSONL."""
+    if not path.exists():
+        return False
+    try:
+        with path.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if row.get("prompt_hash") == prompt_hash:
+                    return True
+    except OSError as exc:
+        logger.error("failed to scan feedback log %s: %s", path, exc)
+        return False
+    return False
 
 
 def record_routing_failure_example(
@@ -116,12 +149,7 @@ def record_routing_failure_example(
     )
 
     # Dedup by prompt_hash — one correction per prompt is enough for V1.
-    try:
-        existing = load_feedback(path)
-    except (OSError, json.JSONDecodeError) as exc:
-        logger.error("failed to read feedback log %s: %s", path, exc)
-        return None
-    if any(r.get("prompt_hash") == prompt_hash for r in existing):
+    if _feedback_has_hash(path, prompt_hash):
         logger.info("skip feedback: duplicate prompt_hash=%s", prompt_hash)
         return None
 
