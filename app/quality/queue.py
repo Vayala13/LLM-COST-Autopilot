@@ -27,6 +27,8 @@ def enqueue_verification(
     send_request_fn: SendRequestFn | None = None,
     thresholds_path: str | None = None,
     failure_log_path: Path | str | None = None,
+    feedback_path: Path | str | None = None,
+    record_feedback: bool = True,
 ) -> asyncio.Task[VerificationResult]:
     """Schedule ``verify`` on the running event loop; return immediately.
 
@@ -46,6 +48,8 @@ def enqueue_verification(
             send_request_fn=send_request_fn,
             thresholds_path=thresholds_path,
             failure_log_path=failure_log_path,
+            feedback_path=feedback_path,
+            record_feedback=record_feedback,
         )
 
     task = loop.create_task(_job())

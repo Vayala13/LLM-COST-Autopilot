@@ -58,6 +58,7 @@ def _failing_extraction(failure_log: Path) -> VerificationResult:
         required_fields=["name", "age"],
         send_request_fn=_mock_send,
         failure_log_path=failure_log,
+        record_feedback=False,
     )
 
 
@@ -83,6 +84,7 @@ def test_skip_when_pass(tmp: Path) -> None:
         required_fields=["name", "age"],
         send_request_fn=_mock_send,
         failure_log_path=failure_log,
+        record_feedback=False,
     )
     assert ok.passed and not ok.routing_failure
 
@@ -207,6 +209,7 @@ def test_already_highest(tmp: Path) -> None:
         required_fields=["name", "age"],
         send_request_fn=_mock_send,
         failure_log_path=failure_log,
+        record_feedback=False,
     )
     result = escalate_if_needed(
         prompt="Extract name and age",

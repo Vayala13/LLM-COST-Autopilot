@@ -7,6 +7,8 @@ prints accuracy + confusion matrix for each, picks the better model, and writes:
 
 Requires data/prompt_features.json (run `python -m scripts.inspect_dataset` first).
 
+Phase 3.4 reuses ``train_and_save`` from ``scripts.retrain_from_feedback``.
+
 Run:
     python -m scripts.train_classifier
 """
@@ -16,6 +18,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import joblib
 import numpy as np
@@ -40,12 +43,14 @@ TEST_SIZE = 0.25
 TARGET_ACCURACY = 0.80
 
 
-def _load_xy() -> tuple[np.ndarray, np.ndarray]:
-    if not FEATURES_PATH.exists():
+def _load_xy(features_path: Path | None = None) -> tuple[np.ndarray, np.ndarray]:
+    path = features_path or FEATURES_PATH
+    if not path.exists():
         raise SystemExit(
-            f"Missing {FEATURES_PATH}. Run: python -m scripts.inspect_dataset"
+            f"Missing {path}. Run: python -m scripts.inspect_dataset"
         )
-    payload = json.loads(FEATURES_PATH.read_text())
+    # Trusted local feature dump from inspect_dataset / retrain — not user upload.
+    payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("feature_names") != FEATURE_NAMES:
         raise SystemExit(
             "prompt_features.json feature_names do not match FEATURE_NAMES — "
@@ -57,28 +62,54 @@ def _load_xy() -> tuple[np.ndarray, np.ndarray]:
     return x, y
 
 
-def _evaluate(name: str, model, x_test, y_test) -> dict:
+def _evaluate(name: str, model: Any, x_test: Any, y_test: Any) -> dict:
     pred = model.predict(x_test)
     acc = float(accuracy_score(y_test, pred))
     labels = [1, 2, 3]
     cm = confusion_matrix(y_test, pred, labels=labels).tolist()
     print(f"\n=== {name} ===")
-    print(f"Held-out accuracy: {acc:.1%}  ({accuracy_score(y_test, pred, normalize=False)}"
-          f"/{len(y_test)} correct)")
+    print(
+        f"Held-out accuracy: {acc:.1%}  "
+        f"({accuracy_score(y_test, pred, normalize=False)}/{len(y_test)} correct)"
+    )
     print("Confusion matrix (rows=true, cols=pred) tiers 1/2/3:")
     for i, row in enumerate(cm):
         print(f"  T{labels[i]}  {row}")
     return {"name": name, "accuracy": acc, "confusion_matrix": cm, "labels": labels}
 
 
-def main() -> None:
-    x, y = _load_xy()
+def train_and_save(
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    model_path: Path | None = None,
+    metrics_path: Path | None = None,
+    n_feedback: int = 0,
+) -> dict:
+    """Fit LR vs RF, write joblib + metrics. Returns the metrics dict.
+
+    Only write ``model_path`` with bundles produced here — ``joblib.load``
+    elsewhere must only load these trusted local trainer outputs.
+    """
+    model_path = model_path or MODEL_PATH
+    metrics_path = metrics_path or METRICS_PATH
+
     print(f"Loaded {len(y)} examples, {x.shape[1]} features")
     print(f"Stratified split: test_size={TEST_SIZE}, random_state={RANDOM_STATE}")
 
-    x_train, x_test, y_train, y_test = train_test_split(
-        x, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
-    )
+    # Stratify needs ≥2 samples per class; fall back if a tiny smoke set.
+    unique, counts = np.unique(y, return_counts=True)
+    can_stratify = len(unique) >= 2 and int(counts.min()) >= 2
+    split_kwargs: dict[str, Any] = {
+        "test_size": TEST_SIZE,
+        "random_state": RANDOM_STATE,
+    }
+    if can_stratify:
+        split_kwargs["stratify"] = y
+    else:
+        print("WARNING: not enough per-class samples to stratify; using plain split.")
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, **split_kwargs)
     print(f"Train={len(y_train)}  Test={len(y_test)}")
 
     # Scale features for LR (RF is scale-invariant; keep it unscaled).
@@ -98,7 +129,9 @@ def main() -> None:
         _evaluate("random_forest", forest, x_test, y_test),
     ]
     # Prefer logistic regression on a tie — simpler model for V1 routing.
-    winner = max(results, key=lambda r: (r["accuracy"], r["name"] == "logistic_regression"))
+    winner = max(
+        results, key=lambda r: (r["accuracy"], r["name"] == "logistic_regression")
+    )
     chosen = logistic if winner["name"] == "logistic_regression" else forest
 
     print(f"\nWinner: {winner['name']} @ {winner['accuracy']:.1%}")
@@ -107,30 +140,41 @@ def main() -> None:
     else:
         print(f"Meets V1 target of >{TARGET_ACCURACY:.0%} held-out accuracy.")
 
-    MODELS_DIR.mkdir(exist_ok=True)
+    model_path.parent.mkdir(parents=True, exist_ok=True)
     bundle = {
         "model": chosen,
         "model_name": winner["name"],
         "feature_names": FEATURE_NAMES,
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "held_out_accuracy": winner["accuracy"],
+        "n_examples": int(len(y)),
+        "n_feedback": int(n_feedback),
     }
-    joblib.dump(bundle, MODEL_PATH)
-    print(f"\nWrote model → {MODEL_PATH}")
+    # Trusted local path only — never load joblib from untrusted uploads.
+    joblib.dump(bundle, model_path)
+    print(f"\nWrote model → {model_path}")
 
     metrics = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "n_examples": int(len(y)),
+        "n_feedback": int(n_feedback),
         "test_size": TEST_SIZE,
         "random_state": RANDOM_STATE,
         "target_accuracy": TARGET_ACCURACY,
         "models": results,
         "winner": winner["name"],
         "winner_accuracy": winner["accuracy"],
-        "model_path": str(MODEL_PATH.relative_to(ROOT)),
+        "model_path": str(model_path),
     }
-    METRICS_PATH.write_text(json.dumps(metrics, indent=2))
-    print(f"Wrote metrics → {METRICS_PATH}")
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    metrics_path.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+    print(f"Wrote metrics → {metrics_path}")
+    return metrics
+
+
+def main() -> None:
+    x, y = _load_xy()
+    train_and_save(x, y)
 
 
 if __name__ == "__main__":

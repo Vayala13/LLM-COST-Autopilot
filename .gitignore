@@ -11,3 +11,6 @@ data/routing_failures.jsonl
 
 # Runtime escalation log (Phase 3.3) — prompt hashes + metrics only
 data/escalations.jsonl
+
+# Classifier feedback from routing failures (Phase 3.4) — labeled prompts, local
+data/feedback_prompts.jsonl

@@ -94,6 +94,7 @@ def test_verify_offline(failure_log: Path) -> None:
         required_fields=["name", "age"],
         send_request_fn=_mock_send,
         failure_log_path=failure_log,
+        record_feedback=False,
     )
     assert ok.passed and not ok.routing_failure
     assert ok.score == 1.0
@@ -108,6 +109,7 @@ def test_verify_offline(failure_log: Path) -> None:
         required_fields=["name", "age"],
         send_request_fn=_mock_send,
         failure_log_path=failure_log,
+        record_feedback=False,
     )
     assert not fail.passed and fail.routing_failure
     assert fail.score == 0.5
@@ -127,6 +129,7 @@ def test_verify_offline(failure_log: Path) -> None:
         routed_model="gemini-flash",
         send_request_fn=_mock_send,
         failure_log_path=failure_log,
+        record_feedback=False,
     )
     assert summ.passed and summ.score == 5.0
     assert summ.comparison_model == "claude-sonnet"
@@ -141,6 +144,7 @@ def test_verify_offline(failure_log: Path) -> None:
         routed_model="gemini-flash",
         send_request_fn=_mock_send,
         failure_log_path=failure_log,
+        record_feedback=False,
     )
     assert not summ_fail.passed and summ_fail.routing_failure
     assert summ_fail.score == 3.0
@@ -155,6 +159,7 @@ def test_verify_offline(failure_log: Path) -> None:
         routed_model="gemini-flash",
         send_request_fn=_mock_send,
         failure_log_path=failure_log,
+        record_feedback=False,
     )
     assert cls.passed and cls.score == 1.0
     print(f"OK classification pass score={cls.score} ref={cls.comparison_model}")
@@ -167,6 +172,7 @@ def test_verify_offline(failure_log: Path) -> None:
         routed_model="gemini-flash",
         send_request_fn=_mock_send,
         failure_log_path=failure_log,
+        record_feedback=False,
     )
     assert not cls_fail.passed and cls_fail.routing_failure
     assert cls_fail.score == 0.0
@@ -182,6 +188,7 @@ async def test_enqueue(failure_log: Path) -> None:
         required_fields=["email"],
         send_request_fn=_mock_send,
         failure_log_path=failure_log,
+        record_feedback=False,
     )
     results = await drain([task])
     assert len(results) == 1 and results[0].passed
@@ -200,6 +207,7 @@ def test_live_optional() -> None:
             use_case="summarization",
             routed_model="gemini-flash",
             send_request_fn=send_request,
+            record_feedback=False,
         )
     except ProviderNotConfigured as exc:
         print(f"SKIP live: {exc}")
